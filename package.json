@@ -43,14 +43,12 @@
       "target": [
         "zip"
       ],
-      "icon": "assets/icon.png",
       "category": "public.app-category.productivity"
     },
     "win": {
       "target": [
         "nsis"
-      ],
-      "icon": "assets/icon.png"
+      ]
     },
     "linux": {
       "target": [
@@ -58,7 +56,6 @@
         "AppImage"
       ],
       "category": "Utility",
-      "icon": "assets/icon.png",
       "maintainer": "Nazih <nazih@example.com>"
     }
   }

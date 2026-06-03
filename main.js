@@ -573,6 +573,9 @@ ipcMain.handle('media:import-url', async (_event, payload) => {
 });
 
 app.whenReady().then(() => {
+  // Set the App User Model ID so the taskbar icon shows correctly on Windows and Linux
+  app.setAppUserModelId('com.nazih.floatboard');
+
   // Register custom app-media protocol to load local files safely without webSecurity blocks
   protocol.handle('app-media', async (request) => {
     try {
