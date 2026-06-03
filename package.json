@@ -1,0 +1,65 @@
+{
+  "name": "floatboard",
+  "version": "1.0.0",
+  "description": "FloatBoard - Always on top clipboard for text, images & videos",
+  "main": "main.js",
+  "scripts": {
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "dev": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "build:linux": "electron-builder --linux deb AppImage -c.directories.output=dist/linux",
+    "build:win": "electron-builder --win nsis -c.directories.output=dist/windows",
+    "build:mac": "electron-builder --mac zip -c.directories.output=dist/macos",
+    "build:all": "npm run build:linux && npm run build:win && npm run build:mac"
+  },
+  "keywords": [
+    "clipboard",
+    "floating",
+    "electron",
+    "productivity"
+  ],
+  "author": "Nazih <nazih@example.com>",
+  "homepage": "https://github.com/nazih/floating-board",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^29.4.6",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.nazih.floatboard",
+    "productName": "FloatBoard",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "style.css",
+      "assets/**/*"
+    ],
+    "mac": {
+      "target": [
+        "zip"
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "Utility",
+      "icon": "assets/icon.png",
+      "maintainer": "Nazih <nazih@example.com>"
+    }
+  }
+}
