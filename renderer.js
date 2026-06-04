@@ -622,6 +622,28 @@ function renderMediaGrid(section) {
       img.src = item.src;
       img.alt = item.name || 'Image';
       mediaItem.appendChild(img);
+      
+      let scale = 1;
+      let panX = 0;
+      let panY = 0;
+
+      mediaItem.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault(); // Prevent whole app zooming
+          const zoomSensitivity = 0.01;
+          scale = Math.max(1, Math.min(scale - e.deltaY * zoomSensitivity, 10));
+        } else if (scale > 1) {
+          e.preventDefault(); // Prevent scrolling the board
+          panX -= e.deltaX;
+          panY -= e.deltaY;
+        }
+
+        if (scale === 1) { panX = 0; panY = 0; }
+
+        img.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        img.style.transition = 'none';
+      });
+
       mediaItem.addEventListener('pointerenter', () => {
         if (!zoomEnabled) return;
         const previewPopup = document.getElementById('media-preview-popup');
@@ -645,6 +667,12 @@ function renderMediaGrid(section) {
       });
 
       mediaItem.addEventListener('pointerleave', () => {
+        scale = 1;
+        panX = 0;
+        panY = 0;
+        img.style.transform = `translate(0px, 0px) scale(1)`;
+        img.style.transition = 'transform 0.2s ease';
+
         const previewPopup = document.getElementById('media-preview-popup');
         if (previewPopup) {
           previewPopup.classList.remove('active');
@@ -1122,38 +1150,22 @@ function renderHistoryList() {
     const itemEl = document.createElement('div');
     itemEl.className = 'history-item';
 
-    const icon = TYPE_META[item.type] ? TYPE_META[item.type].icon : '';
-    const title = TYPE_META[item.type] ? TYPE_META[item.type].title : item.type;
-    const deletedTime = formatTime(item.deletedAt);
-
     let bodyContent = '';
+    let emojiIcon = '📝';
     if (item.type === 'text') {
-      bodyContent = `<div class="history-item-body">${escapeHtml(item.text)}</div>`;
+      emojiIcon = '📝';
+      bodyContent = escapeHtml(item.text);
     } else if (item.type === 'image') {
-      bodyContent = `
-        <div class="history-item-body">
-          <img src="${item.src}" alt="${escapeHtml(item.name || 'Image')}" />
-          <span style="font-size: 10px; color: rgba(22,24,29,0.5); margin-left: 6px;">${escapeHtml(item.name || 'Image')}</span>
-        </div>
-      `;
+      emojiIcon = '🖼️';
+      bodyContent = escapeHtml(item.name || 'Image');
     } else if (item.type === 'video') {
-      bodyContent = `
-        <div class="history-item-body">
-          <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 2; margin-right: 4px;"><path d="M15 10l4.55-2.27A1 1 0 0121 8.62v6.76a1 1 0 01-1.45.89L15 14v-4zM3 7a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"></path></svg>
-          <span style="font-size: 10px; color: rgba(22,24,29,0.5);">${escapeHtml(item.name || 'Video')}</span>
-        </div>
-      `;
+      emojiIcon = '🎬';
+      bodyContent = escapeHtml(item.name || 'Video');
     }
 
     itemEl.innerHTML = `
-      <div class="history-item-header">
-        <div class="history-item-type">
-          <svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>
-          <span>${title}</span>
-        </div>
-        <span>${deletedTime}</span>
-      </div>
-      ${bodyContent}
+      <div class="history-item-icon">${emojiIcon}</div>
+      <div class="history-item-text">${bodyContent}</div>
       <div class="history-item-actions">
         <button class="history-action-btn restore" type="button" title="Restore to board">
           <svg viewBox="0 0 24 24" aria-hidden="true">
