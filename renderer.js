@@ -1306,11 +1306,40 @@ async function init() {
 
   if (activateBtn && licenseOverlay) {
     activateBtn.addEventListener('click', () => {
-      require('electron').shell.openExternal('https://floatboard.xyz/pricing.html');
       licenseOverlay.classList.add('active');
       isLicenseModalOpen = true;
       if (licenseError) licenseError.style.display = 'none';
       if (licenseInput) licenseInput.focus();
+    });
+  }
+
+  const buyLicenseBtn = document.getElementById('buy-license-btn');
+  if (buyLicenseBtn && activationEmail) {
+    buyLicenseBtn.addEventListener('click', async () => {
+      const email = activationEmail.value.trim();
+      if (!email) {
+        if (licenseError) {
+          licenseError.textContent = 'Please enter your email to continue to purchase';
+          licenseError.style.display = 'block';
+        }
+        return;
+      }
+      if (licenseError) licenseError.style.display = 'none';
+      buyLicenseBtn.disabled = true;
+      buyLicenseBtn.textContent = 'Opening checkout...';
+      
+      const checkoutUrl = await createCheckout(email);
+      if (checkoutUrl) {
+        require('electron').shell.openExternal(checkoutUrl);
+      } else {
+        if (licenseError) {
+          licenseError.textContent = 'Failed to generate checkout link. Please try again.';
+          licenseError.style.display = 'block';
+        }
+      }
+      
+      buyLicenseBtn.disabled = false;
+      buyLicenseBtn.textContent = 'Buy License';
     });
   }
 
@@ -1445,18 +1474,46 @@ async function init() {
   boardEl.focus();
 }
 
+async function createCheckout(email) {
+  try {
+    const response = await fetch('https://floatboard-landing.vercel.app/api/create-checkout', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: email })
+    });
+    
+    if (!response.ok) {
+        throw new Error("Failed to create checkout");
+    }
+    
+    const data = await response.json();
+    return data.url;
+  } catch (error) {
+    console.error('Error creating checkout:', error);
+    return null;
+  }
+}
+
 async function verifyLicenseKey(key) {
   try {
     const response = await fetch('https://floatboard-landing.vercel.app/api/verify-lemon-key', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ licenseKey: key })
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        licenseKey: key.trim()
+      })
     });
     const data = await response.json();
     return data.valid;
   } catch (error) {
     console.error('Verification error:', error);
-    throw error;
+    return false;
   }
 }
 
