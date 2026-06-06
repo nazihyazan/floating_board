@@ -1296,12 +1296,17 @@ async function init() {
   const licenseSubmitBtn = document.getElementById('license-submit-btn');
   const licenseError = document.getElementById('license-error');
 
-  if (isPremium && activateBtn) {
-    activateBtn.style.display = 'none';
+  const premiumBadge = document.getElementById('premium-badge');
+  const activationEmail = document.getElementById('activation-email');
+
+  if (isPremium) {
+    if (activateBtn) activateBtn.style.display = 'none';
+    if (premiumBadge) premiumBadge.style.display = 'inline-block';
   }
 
   if (activateBtn && licenseOverlay) {
     activateBtn.addEventListener('click', () => {
+      require('electron').shell.openExternal('https://floatboard.xyz/pricing.html');
       licenseOverlay.classList.add('active');
       isLicenseModalOpen = true;
       if (licenseError) licenseError.style.display = 'none';
@@ -1325,10 +1330,26 @@ async function init() {
     });
   }
 
-  if (licenseSubmitBtn && licenseInput) {
+  if (licenseSubmitBtn && licenseInput && activationEmail) {
     licenseSubmitBtn.addEventListener('click', async () => {
+      const email = activationEmail.value.trim();
       const key = licenseInput.value.trim();
-      if (!key) return;
+      
+      if (!email) {
+        if (licenseError) {
+          licenseError.textContent = 'Please enter your email';
+          licenseError.style.display = 'block';
+        }
+        return;
+      }
+      
+      if (!key) {
+        if (licenseError) {
+          licenseError.textContent = 'Please enter your License Key';
+          licenseError.style.display = 'block';
+        }
+        return;
+      }
       
       if (licenseError) licenseError.style.display = 'none';
       licenseSubmitBtn.disabled = true;
@@ -1341,7 +1362,9 @@ async function init() {
           const success = await api.activateLicense(key);
           if (success) {
             isPremium = true;
+            localStorage.setItem('floatboard-email', email);
             if (activateBtn) activateBtn.style.display = 'none';
+            if (premiumBadge) premiumBadge.style.display = 'inline-block';
             licenseOverlay.classList.remove('active');
             isLicenseModalOpen = false;
             showToast('Premium Activated ✅');
@@ -1353,7 +1376,7 @@ async function init() {
           }
         } else {
           if (licenseError) {
-            licenseError.textContent = 'Invalid License Key';
+            licenseError.textContent = 'Invalid License Key. Please check your email and try again.';
             licenseError.style.display = 'block';
           }
         }
