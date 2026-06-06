@@ -33,6 +33,45 @@ let state = {
   sections: []
 };
 
+let isPremium = false;
+let upgradeModal = null;
+
+async function showUpgradeModal() {
+  api.openExternal('https://floatboard.xyz/pricing.html');
+}
+
+function checkDailyLimit(kind) {
+  if (isPremium) return true;
+  // We'll treat video as image for limits, or just let it pass if we only track text and image.
+  // We'll map video to image for the limit.
+  const limitKind = kind === 'video' ? 'image' : kind;
+  if (limitKind !== 'text' && limitKind !== 'image') return true;
+
+  const now = Date.now();
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  
+  let usage = {};
+  try {
+    usage = JSON.parse(localStorage.getItem('daily_usage')) || {};
+  } catch (e) {
+    usage = {};
+  }
+
+  if (!usage.timestamp || (now - usage.timestamp) > ONE_DAY) {
+    usage = { timestamp: now, text: 0, image: 0 };
+  }
+
+  if (usage[limitKind] >= 5) {
+    showToast(`Daily limit reached (5/5). Upgrade to Premium for unlimited access.`);
+    showUpgradeModal();
+    return false;
+  }
+
+  usage[limitKind]++;
+  localStorage.setItem('daily_usage', JSON.stringify(usage));
+  return true;
+}
+
 let activeType = null;
 let pendingTextFocus = false;
 let saveTimer = null;
@@ -44,6 +83,7 @@ let snowCtx = null;
 let snowAnimationId = null;
 let snowflakes = [];
 let historyItems = [];
+let isLicenseModalOpen = false;
 try {
   historyItems = JSON.parse(localStorage.getItem('board_history')) || [];
 } catch (_) {
@@ -780,6 +820,10 @@ function renderMediaGrid(section) {
 
 function addText(text) {
   if (!text) return;
+  
+  if (!checkDailyLimit('text')) {
+    return;
+  }
 
   const section = ensureSection('text');
   if (!section.items) {
@@ -841,6 +885,10 @@ async function addFile(file) {
   const kind = getKind(file);
   if (!kind) return false;
 
+  if (!checkDailyLimit(kind)) {
+    return false;
+  }
+
   try {
     const section = ensureSection(kind);
     const item = await createMediaItem(file, kind);
@@ -868,6 +916,9 @@ async function addFiles(files) {
 }
 
 async function addMediaFromUrl(url, kind) {
+  if (!checkDailyLimit(kind)) {
+    return false;
+  }
   try {
     const item = await api.importMediaUrl({ url, kind });
     const section = ensureSection(item.kind);
@@ -885,6 +936,7 @@ async function addMediaFromUrl(url, kind) {
 }
 
 document.addEventListener('paste', async (event) => {
+  if (isLicenseModalOpen) return;
   const clipboard = event.clipboardData;
   if (!clipboard) return;
 
@@ -1190,6 +1242,12 @@ function renderHistoryList() {
 
 async function init() {
   try {
+    isPremium = await api.isPremium();
+  } catch (error) {
+    console.error('Failed to check premium status', error);
+  }
+
+  try {
     state = normalizeLoadedBoard(await api.loadBoard());
   } catch (error) {
     console.error(error);
@@ -1226,6 +1284,88 @@ async function init() {
     settingsOverlay.addEventListener('click', (e) => {
       if (e.target === settingsOverlay) {
         settingsOverlay.classList.remove('active');
+      }
+    });
+  }
+
+  // License Panel Initialization
+  const activateBtn = document.getElementById('activate-btn');
+  const licenseOverlay = document.getElementById('license-overlay');
+  const licenseCloseBtn = document.getElementById('license-close-btn');
+  const licenseInput = document.getElementById('license-input');
+  const licenseSubmitBtn = document.getElementById('license-submit-btn');
+  const licenseError = document.getElementById('license-error');
+
+  if (isPremium && activateBtn) {
+    activateBtn.style.display = 'none';
+  }
+
+  if (activateBtn && licenseOverlay) {
+    activateBtn.addEventListener('click', () => {
+      licenseOverlay.classList.add('active');
+      isLicenseModalOpen = true;
+      if (licenseError) licenseError.style.display = 'none';
+      if (licenseInput) licenseInput.focus();
+    });
+  }
+
+  if (licenseCloseBtn && licenseOverlay) {
+    licenseCloseBtn.addEventListener('click', () => {
+      licenseOverlay.classList.remove('active');
+      isLicenseModalOpen = false;
+    });
+  }
+
+  if (licenseOverlay) {
+    licenseOverlay.addEventListener('click', (e) => {
+      if (e.target === licenseOverlay) {
+        licenseOverlay.classList.remove('active');
+        isLicenseModalOpen = false;
+      }
+    });
+  }
+
+  if (licenseSubmitBtn && licenseInput) {
+    licenseSubmitBtn.addEventListener('click', async () => {
+      const key = licenseInput.value.trim();
+      if (!key) return;
+      
+      if (licenseError) licenseError.style.display = 'none';
+      licenseSubmitBtn.disabled = true;
+      licenseSubmitBtn.textContent = 'Verifying...';
+      
+      try {
+        const isValid = await verifyLicenseKey(key);
+        
+        if (isValid) {
+          const success = await api.activateLicense(key);
+          if (success) {
+            isPremium = true;
+            if (activateBtn) activateBtn.style.display = 'none';
+            licenseOverlay.classList.remove('active');
+            isLicenseModalOpen = false;
+            showToast('Premium Activated ✅');
+          } else {
+            if (licenseError) {
+              licenseError.textContent = 'Failed to save license locally';
+              licenseError.style.display = 'block';
+            }
+          }
+        } else {
+          if (licenseError) {
+            licenseError.textContent = 'Invalid License Key';
+            licenseError.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        console.error('Verification error:', err);
+        if (licenseError) {
+          licenseError.textContent = 'Connection Error: Please check your internet';
+          licenseError.style.display = 'block';
+        }
+      } finally {
+        licenseSubmitBtn.disabled = false;
+        licenseSubmitBtn.textContent = 'Activate';
       }
     });
   }
@@ -1280,6 +1420,21 @@ async function init() {
 
   render();
   boardEl.focus();
+}
+
+async function verifyLicenseKey(key) {
+  try {
+    const response = await fetch('https://floatboard-landing.vercel.app/api/verify-lemon-key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ licenseKey: key })
+    });
+    const data = await response.json();
+    return data.valid;
+  } catch (error) {
+    console.error('Verification error:', error);
+    throw error;
+  }
 }
 
 function applyTheme(theme) {

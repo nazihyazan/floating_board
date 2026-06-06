@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FloatBoard</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="upgrade.css" />
   </head>
   <body>
     <div id="app" class="window-shell">
@@ -43,6 +44,9 @@
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
+            </button>
+            <button id="activate-btn" class="icon-button" type="button" aria-label="Activate Premium" title="Activate Premium" style="font-size: 14px; line-height: 1;">
+              🔑
             </button>
             <button id="settings-btn" class="icon-button" type="button" aria-label="Settings" title="Settings">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -139,6 +143,26 @@
                 <span class="slider"></span>
               </label>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- License Panel Overlay -->
+      <div id="license-overlay" class="settings-overlay" aria-hidden="true">
+        <div class="settings-panel">
+          <div class="settings-header">
+            <h3>Activate Premium</h3>
+            <button id="license-close-btn" class="settings-close-btn" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="settings-body" style="padding: 24px; text-align: center;">
+            <p style="margin-bottom: 16px; font-size: 0.95rem; opacity: 0.8;">Enter your License Key to unlock all Premium features forever.</p>
+            <input type="text" id="license-input" placeholder="FL-XXXXXXXXXXXXXXXX" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid rgba(128,128,128,0.3); background: transparent; color: inherit; margin-bottom: 16px; font-family: monospace; font-size: 14px;" />
+            <div id="license-error" style="color: #ff4d4f; font-size: 12.5px; margin-top: -8px; margin-bottom: 12px; display: none; text-align: left; font-weight: 500;">Invalid License Key</div>
+            <button id="license-submit-btn" style="width: 100%; padding: 12px; border-radius: 6px; background: #00adef; color: white; border: none; font-weight: 600; cursor: pointer;">Activate</button>
           </div>
         </div>
       </div>

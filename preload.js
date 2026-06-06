@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('floatingBoard', {
   saveBoard: (data) => ipcRenderer.invoke('board:save', data),
   importMedia: (payload) => ipcRenderer.invoke('media:import', payload),
   importMediaUrl: (payload) => ipcRenderer.invoke('media:import-url', payload),
+  isPremium: () => ipcRenderer.invoke('license:is-premium'),
+  activateLicense: (key) => ipcRenderer.invoke('license:activate', key),
+  openExternal: (url) => ipcRenderer.send('open-external', url),
 
   getFilePath: (file) => {
     try {

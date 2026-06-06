@@ -1,9 +1,10 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, protocol, net } = require('electron');
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, protocol, net, shell } = require('electron');
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
 const { pathToFileURL } = require('url');
 const crypto = require('crypto');
+const { isPremium, activateLicense } = require('./license.js');
 
 const APP_NAME = 'FloatBoard';
 const DEFAULT_BOUNDS = { width: 460, height: 460 };
@@ -473,6 +474,18 @@ ipcMain.handle('board:save', async (_event, data) => {
 
   await writeJsonAtomic(getBoardPath(), safeData);
   return true;
+});
+
+ipcMain.handle('license:is-premium', () => {
+  return isPremium();
+});
+
+ipcMain.handle('license:activate', (_event, key) => {
+  return activateLicense(key);
+});
+
+ipcMain.on('open-external', (_event, url) => {
+  shell.openExternal(url);
 });
 
 ipcMain.handle('media:import', async (_event, payload) => {
