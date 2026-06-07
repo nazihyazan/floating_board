@@ -1664,3 +1664,106 @@ document.addEventListener('mouseup', () => {
     draggedImg = null;
   }
 });
+
+// --- Quick Look Image Preview ---
+const previewOverlay = document.getElementById('image-preview-overlay');
+const previewImg = document.getElementById('image-preview-img');
+const zoomInBtn = document.getElementById('preview-zoom-in');
+const zoomOutBtn = document.getElementById('preview-zoom-out');
+const closePreviewBtn = document.getElementById('preview-close');
+
+let previewScale = 1;
+let previewPanX = 0;
+let previewPanY = 0;
+let previewDragging = false;
+let previewStartX = 0;
+let previewStartY = 0;
+
+function openImagePreview(imageSrc) {
+  previewImg.src = imageSrc;
+  previewScale = 1;
+  previewPanX = 0;
+  previewPanY = 0;
+  updatePreviewTransform();
+  previewOverlay.style.display = 'flex';
+}
+
+function closeImagePreview() {
+  previewOverlay.style.display = 'none';
+  previewImg.src = '';
+}
+
+function updatePreviewTransform() {
+  previewImg.style.transform = `translate(${previewPanX}px, ${previewPanY}px) scale(${previewScale})`;
+}
+
+// Global listeners for triggering preview
+sectionsEl.addEventListener('dblclick', (e) => {
+  if (e.target.tagName === 'IMG') {
+    openImagePreview(e.target.src);
+  }
+});
+
+sectionsEl.addEventListener('auxclick', (e) => {
+  if (e.target.tagName === 'IMG' && e.button === 1) { // Middle click
+    e.preventDefault();
+    openImagePreview(e.target.src);
+  }
+});
+
+// Overlay interactions
+previewOverlay.addEventListener('click', (e) => {
+  if (e.target === previewOverlay) {
+    closeImagePreview();
+  }
+});
+
+closePreviewBtn.addEventListener('click', closeImagePreview);
+
+zoomInBtn.addEventListener('click', () => {
+  previewScale += 0.2;
+  updatePreviewTransform();
+});
+
+zoomOutBtn.addEventListener('click', () => {
+  previewScale = Math.max(0.2, previewScale - 0.2);
+  updatePreviewTransform();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && previewOverlay.style.display === 'flex') {
+    closeImagePreview();
+  }
+});
+
+previewOverlay.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const zoomSensitivity = 0.05;
+  if (e.deltaY < 0) {
+    previewScale += zoomSensitivity;
+  } else {
+    previewScale = Math.max(0.2, previewScale - zoomSensitivity);
+  }
+  updatePreviewTransform();
+}, { passive: false });
+
+previewImg.addEventListener('mousedown', (e) => {
+  if (e.button === 0) {
+    previewDragging = true;
+    previewStartX = e.clientX - previewPanX;
+    previewStartY = e.clientY - previewPanY;
+  }
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (previewDragging && previewOverlay.style.display === 'flex') {
+    previewPanX = e.clientX - previewStartX;
+    previewPanY = e.clientY - previewStartY;
+    updatePreviewTransform();
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  previewDragging = false;
+});
+

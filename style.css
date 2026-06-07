@@ -1199,3 +1199,48 @@ input:checked + .slider:before {
   stroke: currentColor;
   stroke-width: 1.5;
 }
+
+/* Quick Look Image Preview Overlay */
+#image-preview-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+  cursor: zoom-out;
+}
+
+#image-preview-overlay .image-preview-container {
+  position: relative;
+  max-width: 90%; max-height: 90%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#image-preview-img {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  cursor: grab;
+  transition: transform 0.2s ease;
+}
+
+#image-preview-img:active { cursor: grabbing; }
+
+.preview-controls {
+  position: absolute;
+  bottom: -40px;
+  display: flex; gap: 10px; justify-content: center;
+}
+
+.preview-controls button {
+  background: rgba(255,255,255,0.2);
+  border: none; border-radius: 50%;
+  width: 30px; height: 30px;
+  color: white; font-size: 16px; cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.preview-controls button:hover { background: rgba(255,255,255,0.4); }
