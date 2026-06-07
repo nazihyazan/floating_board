@@ -25,10 +25,10 @@ jobs:
         run: npm install
 
       - name: Build Windows Store App (AppX)
-        run: npx electron-builder --win appx -c.directories.output=dist/windows-store
+        run: npx electron-builder --win appx
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: floatboard-microsoft-store
-          path: dist/windows-store/*.appx
+          path: dist/**/*.appx
