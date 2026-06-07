@@ -76,7 +76,6 @@ let activeType = null;
 let pendingTextFocus = false;
 let saveTimer = null;
 let toastTimer = null;
-let zoomEnabled = localStorage.getItem('zoomEnabled') !== 'false';
 let snowEnabled = localStorage.getItem('snowEnabled') === 'true';
 let snowCanvas = null;
 let snowCtx = null;
@@ -1202,13 +1201,28 @@ async function init() {
   const settingsBtn = document.getElementById('settings-btn');
   const settingsOverlay = document.getElementById('settings-overlay');
   const settingsCloseBtn = document.getElementById('settings-close-btn');
-  const zoomToggle = document.getElementById('zoom-toggle');
+  // Shortcuts Panel Initialization
+  const shortcutsBtn = document.getElementById('shortcuts-btn');
+  const shortcutsOverlay = document.getElementById('shortcuts-overlay');
+  const shortcutsCloseBtn = document.getElementById('shortcuts-close-btn');
 
-  if (zoomToggle) {
-    zoomToggle.checked = zoomEnabled;
-    zoomToggle.addEventListener('change', () => {
-      zoomEnabled = zoomToggle.checked;
-      localStorage.setItem('zoomEnabled', zoomEnabled);
+  if (shortcutsBtn && shortcutsOverlay) {
+    shortcutsBtn.addEventListener('click', () => {
+      shortcutsOverlay.classList.add('active');
+    });
+  }
+
+  if (shortcutsCloseBtn && shortcutsOverlay) {
+    shortcutsCloseBtn.addEventListener('click', () => {
+      shortcutsOverlay.classList.remove('active');
+    });
+  }
+
+  if (shortcutsOverlay) {
+    shortcutsOverlay.addEventListener('click', (e) => {
+      if (e.target === shortcutsOverlay) {
+        shortcutsOverlay.classList.remove('active');
+      }
     });
   }
 
