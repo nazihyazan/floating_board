@@ -68,9 +68,9 @@
     },
     "appx": {
       "applicationId": "FloatBoard",
-      "identityName": "FloatBoard",
-      "publisher": "CN=Nazih",
-      "publisherDisplayName": "Nazih"
+      "identityName": "FloatingToolsStudio.FloatBoard",
+      "publisher": "CN=A59290A1-B053-4A32-B868-B3EC2BD33ABF",
+      "publisherDisplayName": "Floating Tools Studio"
     }
   }
 }
