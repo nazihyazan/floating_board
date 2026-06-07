@@ -6,7 +6,7 @@
   "scripts": {
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
     "dev": "env -u ELECTRON_RUN_AS_NODE electron .",
-    "build:linux": "electron-builder --linux deb AppImage -c.directories.output=dist/linux",
+    "build:linux": "electron-builder --linux deb rpm AppImage -c.directories.output=dist/linux",
     "build:win": "electron-builder --win nsis -c.directories.output=dist/windows",
     "build:mac": "electron-builder --mac zip -c.directories.output=dist/macos",
     "build:all": "npm run build:linux && npm run build:win && npm run build:mac"
@@ -65,6 +65,12 @@
       "icon": "assets/icon.png",
       "category": "Utility",
       "maintainer": "Nazih <nazih@example.com>"
+    },
+    "appx": {
+      "applicationId": "FloatBoard",
+      "identityName": "FloatBoard",
+      "publisher": "CN=Nazih",
+      "publisherDisplayName": "Nazih"
     }
   }
 }
