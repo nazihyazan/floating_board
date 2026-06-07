@@ -662,35 +662,6 @@ function renderMediaGrid(section) {
       img.src = item.src;
       img.alt = item.name || 'Image';
       mediaItem.appendChild(img);
-
-      mediaItem.addEventListener('pointerenter', () => {
-        if (!zoomEnabled) return;
-        const previewPopup = document.getElementById('media-preview-popup');
-        if (previewPopup) {
-          previewPopup.innerHTML = `<img src="${item.src}" alt="${escapeHtml(item.name || 'Preview')}" />`;
-          
-          const rect = mediaItem.getBoundingClientRect();
-          const windowHeight = window.innerHeight;
-          const isLowerHalf = rect.top > windowHeight / 2;
-
-          if (isLowerHalf) {
-            previewPopup.style.top = '40px';
-            previewPopup.style.bottom = 'auto';
-          } else {
-            previewPopup.style.top = 'auto';
-            previewPopup.style.bottom = '40px';
-          }
-
-          previewPopup.classList.add('active');
-        }
-      });
-
-      mediaItem.addEventListener('pointerleave', () => {
-        const previewPopup = document.getElementById('media-preview-popup');
-        if (previewPopup) {
-          previewPopup.classList.remove('active');
-        }
-      });
     } else {
       const video = document.createElement('video');
       video.src = item.src;
@@ -1617,3 +1588,79 @@ function animateSnow() {
 }
 
 init();
+
+// --- PureRef-style Zoom & Drag (Event Delegation) ---
+let draggedImg = null;
+let startX = 0, startY = 0;
+let initialLeft = 0, initialTop = 0;
+
+sectionsEl.addEventListener('wheel', (e) => {
+  if (e.target.tagName === 'IMG' && zoomEnabled) {
+    // Zoom on normal wheel (mouse) AND ctrl+wheel (touchpad pinch)
+    e.preventDefault(); 
+    const img = e.target;
+    let currentWidth = img.clientWidth;
+    // Adjust zoom speed for touchpad pinch (ctrlKey) vs mouse wheel
+    const zoomSpeed = e.ctrlKey ? 0.05 : 0.1; 
+
+    if (e.deltaY < 0) {
+      img.style.width = (currentWidth + (currentWidth * zoomSpeed)) + 'px';
+      img.style.height = 'auto';
+    } else {
+      let newWidth = currentWidth - (currentWidth * zoomSpeed);
+      if (newWidth > 50) {
+        img.style.width = newWidth + 'px';
+        img.style.height = 'auto';
+      }
+    }
+  }
+}, { passive: false });
+
+sectionsEl.addEventListener('mousedown', (e) => {
+  if (e.target.tagName === 'IMG' && e.button === 0) {
+    e.preventDefault();
+    draggedImg = e.target;
+    
+    // Ensure absolute positioning for free dragging
+    if (getComputedStyle(draggedImg).position !== 'absolute') {
+      draggedImg.style.position = 'absolute';
+    }
+    
+    // Bring to front
+    const allImages = sectionsEl.querySelectorAll('img');
+    allImages.forEach(i => i.style.zIndex = '1');
+    draggedImg.style.zIndex = '10';
+    
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    // Get current left/top or use 50% from the CSS initial state
+    const rect = draggedImg.getBoundingClientRect();
+    const parentRect = draggedImg.parentElement.getBoundingClientRect();
+    
+    if (!draggedImg.style.left || draggedImg.style.left === '50%') {
+      initialLeft = rect.left - parentRect.left + (rect.width / 2);
+      initialTop = rect.top - parentRect.top + (rect.height / 2);
+      draggedImg.style.left = initialLeft + 'px';
+      draggedImg.style.top = initialTop + 'px';
+    } else {
+      initialLeft = parseFloat(draggedImg.style.left);
+      initialTop = parseFloat(draggedImg.style.top);
+    }
+  }
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (draggedImg) {
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    draggedImg.style.left = (initialLeft + dx) + 'px';
+    draggedImg.style.top = (initialTop + dy) + 'px';
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (draggedImg) {
+    draggedImg = null;
+  }
+});
