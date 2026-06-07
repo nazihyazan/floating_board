@@ -1589,79 +1589,25 @@ function animateSnow() {
 
 init();
 
-// --- PureRef-style Zoom & Drag (Event Delegation) ---
-let draggedImg = null;
-let startX = 0, startY = 0;
-let initialLeft = 0, initialTop = 0;
+// --- Quick Look Image Preview ---
+let hoveredImg = null;
 
-sectionsEl.addEventListener('wheel', (e) => {
-  if (e.target.tagName === 'IMG' && zoomEnabled) {
-    // Zoom on normal wheel (mouse) AND ctrl+wheel (touchpad pinch)
-    e.preventDefault(); 
-    const img = e.target;
-    let currentWidth = img.clientWidth;
-    // Adjust zoom speed for touchpad pinch (ctrlKey) vs mouse wheel
-    const zoomSpeed = e.ctrlKey ? 0.05 : 0.1; 
-
-    if (e.deltaY < 0) {
-      img.style.width = (currentWidth + (currentWidth * zoomSpeed)) + 'px';
-      img.style.height = 'auto';
-    } else {
-      let newWidth = currentWidth - (currentWidth * zoomSpeed);
-      if (newWidth > 50) {
-        img.style.width = newWidth + 'px';
-        img.style.height = 'auto';
-      }
-    }
+sectionsEl.addEventListener('mouseover', (e) => {
+  if (e.target.tagName === 'IMG') {
+    hoveredImg = e.target;
   }
-}, { passive: false });
+});
 
-sectionsEl.addEventListener('mousedown', (e) => {
-  if (e.target.tagName === 'IMG' && e.button === 0) {
+sectionsEl.addEventListener('mouseout', (e) => {
+  if (e.target.tagName === 'IMG' && hoveredImg === e.target) {
+    hoveredImg = null;
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if ((e.code === 'Space' || (e.ctrlKey && e.key.toLowerCase() === 'q')) && hoveredImg && previewOverlay.style.display !== 'flex') {
     e.preventDefault();
-    draggedImg = e.target;
-    
-    // Ensure absolute positioning for free dragging
-    if (getComputedStyle(draggedImg).position !== 'absolute') {
-      draggedImg.style.position = 'absolute';
-    }
-    
-    // Bring to front
-    const allImages = sectionsEl.querySelectorAll('img');
-    allImages.forEach(i => i.style.zIndex = '1');
-    draggedImg.style.zIndex = '10';
-    
-    startX = e.clientX;
-    startY = e.clientY;
-    
-    // Get current left/top or use 50% from the CSS initial state
-    const rect = draggedImg.getBoundingClientRect();
-    const parentRect = draggedImg.parentElement.getBoundingClientRect();
-    
-    if (!draggedImg.style.left || draggedImg.style.left === '50%') {
-      initialLeft = rect.left - parentRect.left + (rect.width / 2);
-      initialTop = rect.top - parentRect.top + (rect.height / 2);
-      draggedImg.style.left = initialLeft + 'px';
-      draggedImg.style.top = initialTop + 'px';
-    } else {
-      initialLeft = parseFloat(draggedImg.style.left);
-      initialTop = parseFloat(draggedImg.style.top);
-    }
-  }
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (draggedImg) {
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    draggedImg.style.left = (initialLeft + dx) + 'px';
-    draggedImg.style.top = (initialTop + dy) + 'px';
-  }
-});
-
-document.addEventListener('mouseup', () => {
-  if (draggedImg) {
-    draggedImg = null;
+    openImagePreview(hoveredImg.src);
   }
 });
 
