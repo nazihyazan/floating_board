@@ -1664,6 +1664,11 @@ previewOverlay.addEventListener('click', (e) => {
   }
 });
 
+previewOverlay.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  closeImagePreview();
+});
+
 closePreviewBtn.addEventListener('click', closeImagePreview);
 
 zoomInBtn.addEventListener('click', () => {
