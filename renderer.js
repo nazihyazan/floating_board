@@ -1605,7 +1605,14 @@ sectionsEl.addEventListener('mouseout', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if ((e.code === 'Space' || (e.ctrlKey && e.key.toLowerCase() === 'q')) && hoveredImg && previewOverlay.style.display !== 'flex') {
+  if (e.ctrlKey && e.key.toLowerCase() === 'q') {
+    e.preventDefault();
+    saveNow();
+    api.close();
+    return;
+  }
+  
+  if ((e.code === 'Space' || (e.ctrlKey && e.key.toLowerCase() === 'z')) && hoveredImg && previewOverlay.style.display !== 'flex') {
     e.preventDefault();
     openImagePreview(hoveredImg.src);
   }
