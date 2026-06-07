@@ -58,11 +58,13 @@
     "linux": {
       "target": [
         "deb",
-        "AppImage"
+        "rpm",
+        "AppImage",
+        "snap"
       ],
+      "icon": "assets/icon.png",
       "category": "Utility",
-      "maintainer": "Nazih <nazih@example.com>",
-      "artifactName": "${name}_${version}_amd64.${ext}"
+      "maintainer": "Nazih <nazih@example.com>"
     }
   }
 }
