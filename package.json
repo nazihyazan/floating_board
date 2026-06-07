@@ -46,12 +46,14 @@
       "target": [
         "zip"
       ],
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "artifactName": "FloatBoard-${version}-mac.${ext}"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "artifactName": "FloatBoard.Setup.${version}.${ext}"
     },
     "linux": {
       "target": [
@@ -59,7 +61,8 @@
         "AppImage"
       ],
       "category": "Utility",
-      "maintainer": "Nazih <nazih@example.com>"
+      "maintainer": "Nazih <nazih@example.com>",
+      "artifactName": "${name}_${version}_amd64.${ext}"
     }
   }
 }
