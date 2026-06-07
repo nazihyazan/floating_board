@@ -26,7 +26,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y rpm
 
       - name: Build RPM App
-        run: npx electron-builder --linux rpm
+        run: npx electron-builder --linux rpm --publish never
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
