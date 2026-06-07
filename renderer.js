@@ -662,27 +662,6 @@ function renderMediaGrid(section) {
       img.src = item.src;
       img.alt = item.name || 'Image';
       mediaItem.appendChild(img);
-      
-      let scale = 1;
-      let panX = 0;
-      let panY = 0;
-
-      mediaItem.addEventListener('wheel', (e) => {
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault(); // Prevent whole app zooming
-          const zoomSensitivity = 0.01;
-          scale = Math.max(1, Math.min(scale - e.deltaY * zoomSensitivity, 10));
-        } else if (scale > 1) {
-          e.preventDefault(); // Prevent scrolling the board
-          panX -= e.deltaX;
-          panY -= e.deltaY;
-        }
-
-        if (scale === 1) { panX = 0; panY = 0; }
-
-        img.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        img.style.transition = 'none';
-      });
 
       mediaItem.addEventListener('pointerenter', () => {
         if (!zoomEnabled) return;
@@ -707,12 +686,6 @@ function renderMediaGrid(section) {
       });
 
       mediaItem.addEventListener('pointerleave', () => {
-        scale = 1;
-        panX = 0;
-        panY = 0;
-        img.style.transform = `translate(0px, 0px) scale(1)`;
-        img.style.transition = 'transform 0.2s ease';
-
         const previewPopup = document.getElementById('media-preview-popup');
         if (previewPopup) {
           previewPopup.classList.remove('active');
