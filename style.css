@@ -1234,3 +1234,56 @@ input:checked + .slider:before {
 }
 
 .preview-controls button:hover { background: rgba(255,255,255,0.4); }
+
+/* OS-Specific Title Bar UI */
+
+/* Mac (Darwin) */
+/* Hide HTML buttons since we use native titleBarStyle: 'hidden' traffic lights */
+.platform-darwin .traffic-lights {
+  display: none;
+}
+/* Shift the layout so title doesn't overlap with native left traffic lights */
+.platform-darwin .chrome-bar {
+  grid-template-columns: 80px minmax(0, 1fr) 48px;
+  padding-left: 80px;
+}
+
+/* Windows (Win32) */
+/* Hide HTML buttons since we use titleBarOverlay */
+.platform-win32 .traffic-lights {
+  display: none;
+}
+/* Shift layout so window actions don't overlap with native right WCO */
+.platform-win32 .chrome-bar {
+  grid-template-columns: 48px minmax(0, 1fr) 140px;
+  padding-right: 140px;
+}
+/* Move window actions to the left since right is occupied by native controls */
+.platform-win32 .window-actions {
+  order: 1;
+  justify-content: flex-start;
+}
+.platform-win32 .window-title {
+  order: 2;
+}
+
+/* Linux */
+/* Linux keeps the HTML buttons because titleBarStyle 'hidden' is not supported */
+.platform-linux .chrome-bar {
+  grid-template-columns: auto minmax(0, 1fr) 86px;
+}
+.platform-linux .traffic-lights {
+  order: 3;
+  justify-content: flex-end;
+}
+.platform-linux .window-actions {
+  order: 1;
+  justify-content: flex-start;
+}
+.platform-linux .window-title {
+  order: 2;
+}
+.platform-linux .traffic-button.minimize { order: 1; }
+.platform-linux .traffic-button.maximize { order: 2; }
+.platform-linux .traffic-button.close { order: 3; }
+

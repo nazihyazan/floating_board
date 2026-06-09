@@ -3,6 +3,11 @@ const api = window.floatingBoard;
 // Instant theme application on load to prevent flashing
 document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
 
+// Add platform class for OS specific styling
+if (api.getPlatform) {
+  document.body.classList.add(`platform-${api.getPlatform()}`);
+}
+
 const TYPE_META = {
   text: {
     title: 'Text',
