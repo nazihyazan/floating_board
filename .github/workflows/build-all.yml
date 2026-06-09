@@ -31,6 +31,7 @@ jobs:
 
       - name: Build Windows Store App (AppX) & Exe
         if: matrix.os == 'windows-latest'
+        shell: bash
         run: |
           npm run build:win
           npx electron-builder --win appx -c.directories.output=dist/windows
