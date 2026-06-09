@@ -32,16 +32,22 @@ jobs:
       - name: Build Windows Store App (AppX) & Exe
         if: matrix.os == 'windows-latest'
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm run build:win
           npx electron-builder --win appx -c.directories.output=dist/windows
 
       - name: Build macOS App
         if: matrix.os == 'macos-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:mac
 
       - name: Build Linux App (Deb, RPM, AppImage)
         if: matrix.os == 'ubuntu-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:linux
 
       - name: Upload Artifacts
