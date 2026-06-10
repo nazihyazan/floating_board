@@ -100,13 +100,14 @@ function saveWindowStateSoon() {
 }
 
 function sendWindowStatus() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-
-  mainWindow.webContents.send('window:status', {
-    pinned: mainWindow.isAlwaysOnTop(),
-    maximized: mainWindow.isMaximized(),
-    visible: mainWindow.isVisible()
-  });
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const isMax = process.platform === 'win32' ? (normalBounds !== null) : mainWindow.isMaximized();
+    mainWindow.webContents.send('window:status', {
+      pinned: mainWindow.isAlwaysOnTop(),
+      maximized: isMax,
+      visible: mainWindow.isVisible()
+    });
+  }
 }
 
 function setPinned(value) {
@@ -469,14 +470,33 @@ ipcMain.on('window:minimize', () => {
   minimizeMainWindow();
 });
 
+let normalBounds = null;
 ipcMain.on('window:toggle-maximize', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (mainWindow.isMaximized()) {
-    mainWindow.unmaximize();
+  
+  if (process.platform === 'win32') {
+    // Custom maximize for Windows transparent windows
+    if (normalBounds) {
+      // Restore
+      mainWindow.setBounds(normalBounds);
+      normalBounds = null;
+    } else {
+      // Maximize
+      normalBounds = mainWindow.getBounds();
+      const { screen } = require('electron');
+      const display = screen.getDisplayNearestPoint({ x: normalBounds.x, y: normalBounds.y });
+      mainWindow.setBounds(display.workArea);
+    }
+    // Fake the maximized status for renderer
+    sendWindowStatus();
   } else {
-    mainWindow.maximize();
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+    sendWindowStatus();
   }
-  sendWindowStatus();
 });
 
 ipcMain.on('window:close', () => {
@@ -719,18 +739,7 @@ app.whenReady().then(() => {
       return new Response('Not Found', { status: 404 });
     }
   });
-  ipcMain.on('theme:change', (event, theme) => {
-    if (process.platform === 'win32' && mainWindow && !mainWindow.isDestroyed()) {
-      try {
-        mainWindow.setTitleBarOverlay({
-          color: '#00000000',
-          symbolColor: theme === 'dark' ? '#ffffff' : '#000000'
-        });
-      } catch (e) {
-        // Ignored
-      }
-    }
-  });
+// Removed theme:change since titleBarOverlay is no longer used
 
   createWindow();
   createTray();
