@@ -69,5 +69,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          # Use --clobber to overwrite existing files in the release
-          gh release upload v1.0.0 dist/windows/*.exe dist/windows/*.appx dist/macos/*.zip dist/macos/*.dmg dist/linux/*.deb dist/linux/*.rpm dist/linux/*.AppImage --clobber || true
+          # Only upload files that actually exist in the current runner's dist folders
+          files=()
+          for f in dist/windows/*.exe dist/windows/*.appx dist/macos/*.zip dist/macos/*.dmg dist/linux/*.deb dist/linux/*.rpm dist/linux/*.AppImage; do
+            if [ -f "$f" ]; then
+              files+=("$f")
+            fi
+          done
+          
+          if [ ${#files[@]} -gt 0 ]; then
+            gh release upload v1.0.0 "${files[@]}" --clobber
+          fi
