@@ -236,7 +236,7 @@ function createWindow() {
     minHeight: MIN_BOUNDS.height,
     title: APP_NAME,
     icon: getIconPath(),
-    frame: process.platform === 'darwin' || process.platform === 'win32',
+    frame: true,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     transparent: process.platform !== 'win32',
     backgroundColor: process.platform === 'win32' ? '#ffffff' : '#00000000',
