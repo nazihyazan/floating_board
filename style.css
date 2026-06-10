@@ -1526,7 +1526,11 @@ input:checked + .slider:before {
 }
 
 /* Windows Native Frame Overrides */
-body.platform-win32 .chrome-bar {
+body.platform-win32 .traffic-lights {
+  display: none !important;
+}
+
+body.platform-win32 .window-title {
   display: none !important;
 }
 
