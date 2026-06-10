@@ -1265,13 +1265,14 @@ input:checked + .slider:before {
 .platform-linux .traffic-button {
   width: 46px;
   height: 42px; /* Full height of titlebar */
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  display: flex;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
   align-items: center;
   justify-content: center;
-  color: var(--text-main);
+  color: var(--body-color, #000) !important;
   opacity: 0.8;
 }
 .platform-win32 .traffic-button.minimize,
