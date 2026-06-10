@@ -59,6 +59,13 @@
       ],
       "artifactName": "FloatBoard.Setup.${version}.${ext}"
     },
+    "nsis": {
+      "allowToChangeInstallationDirectory": true,
+      "oneClick": false,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": true,
+      "differentialPackage": false
+    },
     "linux": {
       "target": [
         "deb",
