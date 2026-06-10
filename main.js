@@ -235,15 +235,8 @@ function createWindow() {
     minHeight: MIN_BOUNDS.height,
     title: APP_NAME,
     icon: getIconPath(),
-    frame: process.platform !== 'linux',
-    titleBarStyle: process.platform === 'linux' ? 'default' : 'hidden',
-    ...(process.platform === 'win32' ? {
-      titleBarOverlay: {
-        color: '#00000000',
-        symbolColor: '#000000',
-        height: 42
-      }
-    } : {}),
+    frame: process.platform === 'darwin',
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     transparent: true,
     backgroundColor: '#00000000',
     hasShadow: true,

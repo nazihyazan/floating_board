@@ -1248,26 +1248,23 @@ input:checked + .slider:before {
   padding-left: 80px;
 }
 
-/* Windows (Win32) */
-/* Hide HTML buttons since we use titleBarOverlay */
-.platform-win32 .traffic-lights {
-  display: none;
+/* Windows and Linux use HTML traffic lights */
+.platform-win32 .chrome-bar,
+.platform-linux .chrome-bar {
+  grid-template-columns: auto minmax(0, 1fr) 86px;
 }
-/* Shift layout so window actions don't overlap with native right WCO */
-.platform-win32 .chrome-bar {
-  grid-template-columns: 140px minmax(0, 1fr) 140px;
-  padding: 0;
+.platform-win32 .traffic-lights,
+.platform-linux .traffic-lights {
+  order: 3;
+  justify-content: flex-end;
 }
-/* Move window actions to the left since right is occupied by native controls */
-.platform-win32 .window-actions {
+.platform-win32 .window-actions,
+.platform-linux .window-actions {
   order: 1;
-  justify-content: flex-start;
-  padding-left: 12px;
 }
-.platform-win32 .window-title {
+.platform-win32 .window-title,
+.platform-linux .window-title {
   order: 2;
-  text-align: center;
-  justify-content: center;
 }
 
 /* Linux */
