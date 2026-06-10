@@ -63,3 +63,11 @@ jobs:
             dist/linux/*.rpm
             dist/linux/*.AppImage
           retention-days: 7
+
+      - name: Upload to Release v1.0.0
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          # Use --clobber to overwrite existing files in the release
+          gh release upload v1.0.0 dist/windows/*.exe dist/windows/*.appx dist/macos/*.zip dist/macos/*.dmg dist/linux/*.deb dist/linux/*.rpm dist/linux/*.AppImage --clobber || true
