@@ -723,8 +723,6 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
-
-  globalShortcut.register('CommandOrControl+Shift+Space', toggleWindowVisibility);
   
   // Clipboard History Polling
   const clipHistory = [];
