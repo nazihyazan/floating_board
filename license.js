@@ -8,9 +8,10 @@ function isPremium() {
         if (!fs.existsSync(keyPath)) return false;
         
         const key = fs.readFileSync(keyPath, 'utf8').trim();
-        // Basic offline check - assume valid if it's long enough
+        // Basic offline check - verify it matches standard UUID format (LemonSqueezy)
         // Full verification is done via API during activation
-        return key.length > 10;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(key);
     } catch (error) {
         return false;
     }
