@@ -1,7 +1,7 @@
 {
   "name": "floatboard",
-  "version": "1.0.0",
-  "description": "FloatBoard - Always on top clipboard for text, images and videos",
+  "version": "1.0.1",
+  "description": "Cross-platform floating clipboard manager",
   "main": "main.js",
   "scripts": {
     "start": "env -u ELECTRON_RUN_AS_NODE electron .",
