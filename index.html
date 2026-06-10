@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="upgrade.css" />
   </head>
   <body>
+    <script>
+      if (navigator.userAgent.includes('Windows')) {
+        document.body.classList.add('platform-win32');
+      }
+    </script>
     <div id="app" class="window-shell">
       <canvas id="snow-canvas"></canvas>
 

@@ -8,9 +8,9 @@ function isPremium() {
         if (!fs.existsSync(keyPath)) return false;
         
         const key = fs.readFileSync(keyPath, 'utf8').trim();
-        // Basic offline check - assume valid if it matches our format
+        // Basic offline check - assume valid if it's long enough
         // Full verification is done via API during activation
-        return key.startsWith('FL-') && key.length > 10;
+        return key.length > 10;
     } catch (error) {
         return false;
     }
