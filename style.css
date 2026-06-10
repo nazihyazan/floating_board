@@ -1265,29 +1265,29 @@ input:checked + .slider:before {
 .platform-linux .traffic-button {
   width: 46px;
   height: 42px; /* Full height of titlebar */
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  display: flex !important;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.01); /* Fix hit testing for no-drag on Windows */
+  box-shadow: none;
+  border: none;
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--body-color, #000) !important;
+  color: var(--body-color, #000);
   opacity: 0.8;
 }
 .platform-win32 .traffic-button.minimize,
 .platform-linux .traffic-button.minimize,
 .platform-win32 .traffic-button.maximize,
 .platform-linux .traffic-button.maximize {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.01);
 }
 .platform-win32 .traffic-button.close,
 .platform-linux .traffic-button.close {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.01);
 }
 .platform-win32 .traffic-button:hover,
 .platform-linux .traffic-button:hover {
-  background: var(--btn-secondary-hover);
+  background: rgba(128, 128, 128, 0.2);
   opacity: 1;
   filter: none;
 }
