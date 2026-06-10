@@ -1,6 +1,6 @@
 {
   "name": "floatboard",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Cross-platform floating clipboard manager",
   "main": "main.js",
   "scripts": {

@@ -331,9 +331,15 @@ function createWindow() {
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-      updateTrayMenu();
+      if (process.platform === 'darwin') {
+        event.preventDefault();
+        mainWindow.hide();
+        updateTrayMenu();
+      } else {
+        // On Windows/Linux, if a native close event occurs (e.g. Alt+F4, or NSIS installer killing the app)
+        // we let it close the app. The custom 'X' button still hides to tray via ipcMain.on('window:close')
+        isQuitting = true;
+      }
     }
   });
 
