@@ -20,6 +20,18 @@ const TYPE_META = {
   video: {
     title: 'Videos',
     icon: '<path d="M4 6h16v12H4z"></path><path d="M10 9l5 3-5 3z"></path>'
+  },
+  split: {
+    title: 'Split View',
+    icon: '<rect x="3" y="3" width="8" height="18" rx="2" ry="2"></rect><rect x="13" y="3" width="8" height="18" rx="2" ry="2"></rect>'
+  },
+  grid: {
+    title: 'Grid View',
+    icon: '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>'
+  },
+  code: {
+    title: 'Code Snippet',
+    icon: '<polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline>'
   }
 };
 
@@ -41,13 +53,10 @@ let state = {
 let isPremium = false;
 let upgradeModal = null;
 
-async function showUpgradeModal() {
-  api.openExternal('https://floatboard.xyz/pricing.html');
-}
+let hasShownUpgradeModal = false;
 
 function checkDailyLimit(kind) {
   if (isPremium) return true;
-  // We'll treat video as image for limits, or just let it pass if we only track text and image.
   // We'll map video to image for the limit.
   const limitKind = kind === 'video' ? 'image' : kind;
   if (limitKind !== 'text' && limitKind !== 'image') return true;
@@ -66,9 +75,16 @@ function checkDailyLimit(kind) {
     usage = { timestamp: now, text: 0, image: 0 };
   }
 
-  if (usage[limitKind] >= 5) {
-    showToast(`Daily limit reached (5/5). Upgrade to Premium for unlimited access.`);
-    showUpgradeModal();
+  const totalUsage = (usage.text || 0) + (usage.image || 0);
+
+  if (totalUsage >= 10) {
+    if (!hasShownUpgradeModal) {
+      hasShownUpgradeModal = true;
+      showToast(`Daily limit reached (10/10). Upgrade to Premium for unlimited access.`);
+      api.openExternal('https://floatboard.xyz/pricing.html');
+    } else {
+      showToast(`Daily limit reached. The pricing page has been opened in your browser.`);
+    }
     return false;
   }
 
@@ -265,13 +281,13 @@ function extractMediaCandidateFromHtml(html) {
     const baseUrl = normalizeHttpUrl(doc.querySelector('base[href]')?.getAttribute('href'));
 
     const video = doc.querySelector('video[src], video source[src], source[type^="video/"][src]');
-    const videoCandidate = linkedMediaCandidate(video, baseUrl)
-      || candidateFromElementUrl(video, 'src', 'video', baseUrl);
+    const videoCandidate = candidateFromElementUrl(video, 'src', 'video', baseUrl)
+      || linkedMediaCandidate(video, baseUrl);
     if (videoCandidate) return videoCandidate;
 
     for (const image of Array.from(doc.querySelectorAll('img[src], source[type^="image/"][src]'))) {
-      const imageCandidate = linkedMediaCandidate(image, baseUrl)
-        || candidateFromElementUrl(image, 'src', 'image', baseUrl);
+      const imageCandidate = candidateFromElementUrl(image, 'src', 'image', baseUrl)
+        || linkedMediaCandidate(image, baseUrl);
       if (imageCandidate) return imageCandidate;
     }
 
@@ -433,11 +449,12 @@ function normalizeLoadedBoard(data) {
       continue;
     }
 
-    if (section.type === 'image' || section.type === 'video') {
+    if (['image', 'video', 'split', 'grid', 'code'].includes(section.type)) {
       next.sections.push({
         type: section.type,
+        id: section.id || `sec-${Date.now()}-${Math.random()}`,
         items: Array.isArray(section.items)
-          ? section.items.filter((item) => item && (item.src || item.fileName))
+          ? section.items.filter((item) => item && (item.src || item.fileName || section.type === 'split' || section.type === 'grid' || section.type === 'code'))
           : [],
         createdAt: section.createdAt || now(),
         updatedAt: section.updatedAt || now()
@@ -526,6 +543,29 @@ function renderSection(section) {
   const body = sectionEl.querySelector('.section-body');
   if (section.type === 'text') {
     body.appendChild(renderTextEditor(section));
+  } else if (section.type === 'split') {
+    const splitDiv = document.createElement('div');
+    splitDiv.className = 'split-view';
+    splitDiv.innerHTML = `
+      <textarea class="split-text" placeholder="Enter text here..."></textarea>
+      <div class="split-img">Drag image here</div>
+    `;
+    body.appendChild(splitDiv);
+  } else if (section.type === 'grid') {
+    const gridDiv = document.createElement('div');
+    gridDiv.className = 'image-grid-2x2';
+    gridDiv.innerHTML = `
+      <div class="grid-cell">Image 1</div>
+      <div class="grid-cell">Image 2</div>
+      <div class="grid-cell">Image 3</div>
+      <div class="grid-cell">Image 4</div>
+    `;
+    body.appendChild(gridDiv);
+  } else if (section.type === 'code') {
+    const codeArea = document.createElement('textarea');
+    codeArea.className = 'code-block';
+    codeArea.placeholder = '// Paste your code here\nfunction helloWorld() {\n  console.log("Hello");\n}';
+    body.appendChild(codeArea);
   } else {
     body.appendChild(renderMediaGrid(section));
   }
@@ -703,7 +743,7 @@ function renderMediaGrid(section) {
       copyButton.className = 'media-copy';
       copyButton.type = 'button';
       copyButton.setAttribute('aria-label', `Copy ${escapeHtml(item.name || 'Image')}`);
-      copyButton.title = 'Copy image';
+      copyButton.title = 'Copy as Screenshot';
       copyButton.innerHTML = `
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -712,49 +752,11 @@ function renderMediaGrid(section) {
       `;
       copyButton.addEventListener('click', async (e) => {
         e.stopPropagation();
-        try {
-          const response = await fetch(item.src);
-          const blob = await response.blob();
-
-          if (blob.type === 'image/png') {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-            showToast('Image copied to clipboard');
-            return;
-          }
-
-          const img = new Image();
-          img.src = item.src;
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-          });
-
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-
-          canvas.toBlob(async (pngBlob) => {
-            if (!pngBlob) {
-              showToast('Failed to copy image');
-              return;
-            }
-            try {
-              await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': pngBlob })
-              ]);
-              showToast('Image copied to clipboard');
-            } catch (err) {
-              console.error(err);
-              showToast('Failed to copy image');
-            }
-          }, 'image/png');
-        } catch (err) {
-          console.error(err);
-          showToast('Failed to copy image');
+        const displayImg = mediaItem.querySelector('img');
+        if (displayImg) {
+          await captureImageToClipboard(displayImg);
+        } else {
+          showToast('No image to copy');
         }
       });
       mediaItem.appendChild(copyButton);
@@ -829,6 +831,46 @@ async function createMediaItem(file, kind) {
   };
 }
 
+async function flattenImageToItem(src, originalName = 'screenshot.png') {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    // Allow cross-origin to avoid tainted canvas if loading from remote URL
+    img.crossOrigin = 'anonymous';
+    img.onload = async () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+        
+        canvas.toBlob(async (blob) => {
+          if (!blob) return reject(new Error('Failed to create blob'));
+          const buffer = await blob.arrayBuffer();
+          const savedSrc = await api.saveBlob(buffer);
+          if (!savedSrc) return reject(new Error('Failed to save flattened image'));
+          
+          resolve({
+            id: crypto.randomUUID(),
+            kind: 'image',
+            name: originalName,
+            mime: 'image/png',
+            size: blob.size,
+            storage: 'file',
+            fileName: savedSrc.split('/').pop(),
+            src: savedSrc,
+            createdAt: now()
+          });
+        }, 'image/png', 1.0);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => reject(new Error('Failed to load image for flattening'));
+    img.src = src;
+  });
+}
+
 async function addFile(file) {
   const kind = getKind(file);
   if (!kind) return false;
@@ -839,7 +881,14 @@ async function addFile(file) {
 
   try {
     const section = ensureSection(kind);
-    const item = await createMediaItem(file, kind);
+    let item;
+    if (kind === 'image') {
+      const tempSrc = URL.createObjectURL(file);
+      item = await flattenImageToItem(tempSrc, file.name);
+      URL.revokeObjectURL(tempSrc);
+    } else {
+      item = await createMediaItem(file, kind);
+    }
     section.items.push(item);
     section.updatedAt = now();
     activeType = kind;
@@ -868,7 +917,16 @@ async function addMediaFromUrl(url, kind) {
     return false;
   }
   try {
-    const item = await api.importMediaUrl({ url, kind });
+    // Note: The main process downloads the file and returns a saved app-media:// path
+    let item = await api.importMediaUrl({ url, kind });
+    
+    // WYSIWYG Image Flattening: if it's an image, draw it to a canvas and save the flattened version
+    if (kind === 'image') {
+      const flattenedItem = await flattenImageToItem(item.src, item.name);
+      // We overwrite the imported item with the flattened item
+      item = flattenedItem;
+    }
+    
     const section = ensureSection(item.kind);
     section.items.push(item);
     section.updatedAt = now();
@@ -902,61 +960,19 @@ document.addEventListener('paste', async (event) => {
   event.preventDefault();
   if (text) addText(text);
   if (files.length > 0) await addFiles(files);
-});
-
-boardEl.addEventListener('dragenter', (event) => {
-  event.preventDefault();
-  boardEl.classList.add('drag-over');
-});
-
-boardEl.addEventListener('dragover', (event) => {
-  event.preventDefault();
-  event.dataTransfer.dropEffect = 'copy';
-  boardEl.classList.add('drag-over');
-});
-
-boardEl.addEventListener('dragleave', (event) => {
-  if (!boardEl.contains(event.relatedTarget)) {
-    boardEl.classList.remove('drag-over');
-  }
-});
-
-boardEl.addEventListener('drop', async (event) => {
-  event.preventDefault();
-  boardEl.classList.remove('drag-over');
-
-  const files = Array.from(event.dataTransfer.files || []);
-  const text = event.dataTransfer.getData('text/plain');
-  let handled = false;
-
-  // 1. First handle images/videos dragged from a browser (extracts clean HTTP URLs)
-  const droppedMedia = extractMediaCandidateFromDrop(event.dataTransfer);
-  if (droppedMedia) {
-    showToast(`Importing web ${droppedMedia.kind}...`);
-    await addMediaFromUrl(droppedMedia.url, droppedMedia.kind);
-    handled = true;
-  }
-
-  // 2. Then fallback to local files
-  if (!handled && files.length > 0) {
-    handled = await addFiles(files);
-  }
-
-  // 3. Finally, fall back to standard text drop.
-  if (!handled && text) {
-    addText(text);
-    handled = true;
-  }
-
-  if (!handled && files.length > 0) {
-    showToast('Unsupported file type');
-  }
-});
-
+});// Prevent default drag and drop behavior to avoid accidental app navigation
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
 document.addEventListener('keydown', (event) => {
   if (event.defaultPrevented) return;
+
+
+
   if (event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.target.closest('textarea, input, button, video')) return;
+
+  // Ignore spacebar to prevent accidental text creation and limit checks
+  if (event.key === ' ') return;
 
   if (event.key.length === 1) {
     event.preventDefault();
@@ -1293,7 +1309,7 @@ async function init() {
       
       const checkoutUrl = await createCheckout(email);
       if (checkoutUrl) {
-        require('electron').shell.openExternal(checkoutUrl);
+        api.openExternal(checkoutUrl);
       } else {
         if (licenseError) {
           licenseError.textContent = 'Failed to generate checkout link. Please try again.';
@@ -1348,7 +1364,7 @@ async function init() {
       licenseSubmitBtn.textContent = 'Verifying...';
       
       try {
-        const isValid = await verifyLicenseKey(key);
+        const isValid = await verifyLicenseKey(email, key);
         
         if (isValid) {
           const success = await api.activateLicense(key);
@@ -1359,7 +1375,7 @@ async function init() {
             if (premiumBadge) premiumBadge.style.display = 'inline-block';
             licenseOverlay.classList.remove('active');
             isLicenseModalOpen = false;
-            showToast('Premium Activated ✅');
+            showToast('Activation Successful ✓');
           } else {
             if (licenseError) {
               licenseError.textContent = 'Failed to save license locally';
@@ -1368,7 +1384,7 @@ async function init() {
           }
         } else {
           if (licenseError) {
-            licenseError.textContent = 'Invalid License Key. Please check your email and try again.';
+            licenseError.textContent = 'Invalid License Key. Please make sure you are using the exact email address you used during purchase.';
             licenseError.style.display = 'block';
           }
         }
@@ -1438,42 +1454,32 @@ async function init() {
 }
 
 async function createCheckout(email) {
-  try {
-    const response = await fetch('https://floatboard-landing.vercel.app/api/create-checkout', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email: email })
-    });
-    
-    if (!response.ok) {
-        throw new Error("Failed to create checkout");
-    }
-    
-    const data = await response.json();
-    return data.url;
-  } catch (error) {
-    console.error('Error creating checkout:', error);
-    return null;
-  }
+  // Instantly return the pricing page with the email attached
+  // This bypasses the slow Vercel API cold-start for a 0ms click
+  return `https://floatboard.xyz/pricing.html?email=${encodeURIComponent(email.trim())}`;
 }
 
-async function verifyLicenseKey(key) {
+async function verifyLicenseKey(email, key) {
   try {
-    const response = await fetch('https://floatboard-landing.vercel.app/api/verify-lemon-key', {
+    const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({
-        licenseKey: key.trim()
+      body: new URLSearchParams({
+        license_key: key.trim()
       })
     });
+    
     const data = await response.json();
-    return data.valid;
+    
+    if (data.valid && data.meta && data.meta.customer_email) {
+      // Strictly enforce that the email matches the one from LemonSqueezy
+      return data.meta.customer_email.toLowerCase() === email.trim().toLowerCase();
+    }
+    
+    return false;
   } catch (error) {
     console.error('Verification error:', error);
     return false;
@@ -1543,14 +1549,14 @@ function resizeSnowCanvas() {
 
 function createSnowflakes() {
   snowflakes = [];
-  const count = 25; // 20-30 particles
+  const count = 35; // 35 particles
   for (let i = 0; i < count; i++) {
     snowflakes.push({
       x: Math.random() * (snowCanvas.width || window.innerWidth),
       y: Math.random() * (snowCanvas.height || window.innerHeight),
       r: Math.random() * 3 + 2, // size: 2 to 5px
-      d: Math.random() * 0.7 + 0.3, // speed: between 0.3 and 1px
-      wind: Math.random() * 0.2 - 0.1 // slight wind drift
+      d: Math.random() * 1.5 + 1.0, // speed: between 1 and 2.5px
+      wind: Math.random() * 0.5 - 0.25 // slight wind drift
     });
   }
 }
@@ -1724,6 +1730,61 @@ previewOverlay.addEventListener('wheel', (e) => {
   updatePreviewTransform();
 }, { passive: false });
 
+async function captureImageToClipboard(displayImg) {
+  try {
+    const canvas = document.createElement('canvas');
+    
+    // Use the exact natural dimensions of the image to ensure 100% original quality
+    canvas.width = displayImg.naturalWidth;
+    canvas.height = displayImg.naturalHeight;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(displayImg, 0, 0, displayImg.naturalWidth, displayImg.naturalHeight);
+
+    canvas.toBlob(async (pngBlob) => {
+      if (!pngBlob) {
+        showToast('Failed to copy screenshot');
+        return;
+      }
+      try {
+        api.ignoreNextClipboardImage();
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': pngBlob })
+        ]);
+        showToast('Screenshot copied to clipboard');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to copy screenshot');
+      }
+    }, 'image/png');
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to copy screenshot');
+  }
+}
+
+api.onCopyScreenshot((params) => {
+  const elements = document.elementsFromPoint(params.x, params.y);
+  const displayImg = elements.find(el => el.tagName === 'IMG');
+  if (displayImg) {
+    captureImageToClipboard(displayImg);
+  }
+});
+
+api.onUpdateDownloaded(() => {
+  const updateToast = document.createElement('div');
+  updateToast.className = 'update-toast glass';
+  updateToast.innerHTML = `
+    <span>Update ready to install</span>
+    <button class="update-btn">Restart</button>
+  `;
+  document.body.appendChild(updateToast);
+  
+  updateToast.querySelector('.update-btn').addEventListener('click', () => {
+    api.quitAndInstallUpdate();
+  });
+});
+
 previewImg.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
     previewDragging = true;
@@ -1733,14 +1794,96 @@ previewImg.addEventListener('mousedown', (e) => {
 });
 
 document.addEventListener('mousemove', (e) => {
-  if (previewDragging && previewOverlay.style.display === 'flex') {
+  if (previewDragging) {
     previewPanX = e.clientX - previewStartX;
     previewPanY = e.clientY - previewStartY;
     updatePreviewTransform();
   }
 });
 
+api.onHistoryShow((history) => {
+  let dropdown = document.getElementById('history-dropdown');
+  if (!dropdown) {
+    dropdown = document.createElement('div');
+    dropdown.id = 'history-dropdown';
+    dropdown.className = 'history-dropdown glass';
+    document.body.appendChild(dropdown);
+  }
+  
+  if (dropdown.style.display === 'block') {
+    dropdown.style.display = 'none';
+    return;
+  }
+  
+  dropdown.innerHTML = '<h3>Clipboard History</h3>';
+  
+  if (history.length === 0) {
+    dropdown.innerHTML += '<div class="history-empty">No recent clips found.</div>';
+  } else {
+    history.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'history-item';
+      
+      const textSpan = document.createElement('span');
+      textSpan.className = 'history-item-text';
+      textSpan.textContent = item.content.length > 50 ? item.content.substring(0, 50) + '...' : item.content;
+      textSpan.title = item.content;
+      
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'history-copy-btn';
+      copyBtn.title = 'Copy to clipboard';
+      copyBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(item.content).then(() => {
+          showToast('Copied to clipboard');
+          dropdown.style.display = 'none';
+        });
+      });
+
+      el.appendChild(textSpan);
+      el.appendChild(copyBtn);
+
+      el.addEventListener('click', () => {
+        addMediaToBoard(item.content, 'text');
+        dropdown.style.display = 'none';
+      });
+      dropdown.appendChild(el);
+    });
+  }
+  
+  dropdown.style.display = 'block';
+});
+
+document.addEventListener('click', (event) => {
+  const dropdown = document.getElementById('history-dropdown');
+  if (dropdown && dropdown.style.display === 'block') {
+    if (!dropdown.contains(event.target)) {
+      dropdown.style.display = 'none';
+    }
+  }
+});
+
+api.onMediaAutoAdded((item) => {
+  if (isLicenseModalOpen) return;
+  if (!checkDailyLimit('image')) return;
+  
+  const section = ensureSection('image');
+  section.items.push(item);
+  section.updatedAt = now();
+  activeType = 'image';
+  render();
+  queueSave();
+  showToast('Screenshot auto-added from clipboard');
+});
+
 document.addEventListener('mouseup', () => {
   previewDragging = false;
+});
+
+// Auto-focus window when mouse enters so shortcuts work instantly
+document.body.addEventListener('mouseenter', () => {
+  if (api.focus) api.focus();
 });
 

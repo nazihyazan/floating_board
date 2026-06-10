@@ -225,6 +225,18 @@
                   <span style="background: rgba(128,128,128,0.1); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: monospace;">Right-Click</span>
                 </div>
               </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.1); padding-bottom: 12px;">
+                <span style="font-size: 14px; opacity: 0.9;">Toggle Window</span>
+                <div style="display: flex; gap: 6px;">
+                  <span style="background: rgba(128,128,128,0.1); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: monospace;">Ctrl+Shift+Space</span>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.1); padding-bottom: 12px;">
+                <span style="font-size: 14px; opacity: 0.9;">Clipboard History</span>
+                <div style="display: flex; gap: 6px;">
+                  <span style="background: rgba(128,128,128,0.1); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: monospace;">Ctrl+Shift+V</span>
+                </div>
+              </div>
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 14px; opacity: 0.9;">Quit Application</span>
                 <div style="display: flex; gap: 6px;">
@@ -233,6 +245,17 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div id="about-modal" class="modal" style="display: none;">
+        <div class="modal-content glass">
+          <span class="close-btn">&times;</span>
+          <h2>About FloatBoard</h2>
+          <p>FloatBoard is a minimalist, always-on-top clipboard manager for Windows, macOS, and Linux.</p>
+          <p style="font-size: 12px; color: #888; margin-top: 16px;">
+            Disclaimer: FloatBoard is a neutral productivity tool. It does not host, distribute, or modify any content. Users are solely responsible for ensuring they have the necessary rights and licenses for any content they copy, paste, or drag using this application. The developer assumes no liability for any misuse or copyright infringement.
+          </p>
         </div>
       </div>
 

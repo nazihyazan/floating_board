@@ -8,6 +8,7 @@ function subscribe(channel, callback) {
 
 contextBridge.exposeInMainWorld('floatingBoard', {
   getPlatform: () => process.platform,
+  focus: () => ipcRenderer.send('window:focus'),
   minimize: () => ipcRenderer.send('window:minimize'),
   toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
   close: () => ipcRenderer.send('window:close'),
@@ -16,6 +17,16 @@ contextBridge.exposeInMainWorld('floatingBoard', {
   getWindowBounds: () => ipcRenderer.invoke('window:get-bounds'),
   setWindowBounds: (bounds) => ipcRenderer.send('window:set-bounds', bounds),
   onWindowStatus: (callback) => subscribe('window:status', callback),
+  onCopyScreenshot: (callback) => subscribe('context-menu:copy-screenshot', callback),
+  
+  onHistoryShow: (callback) => subscribe('history:show', callback),
+  onMediaAutoAdded: (callback) => subscribe('media:auto-added', callback),
+  
+  onUpdateDownloaded: (callback) => subscribe('updater:update-downloaded', callback),
+  quitAndInstallUpdate: () => ipcRenderer.invoke('updater:quit-and-install'),
+
+  saveBlob: (buffer) => ipcRenderer.invoke('media:save-blob', buffer),
+  ignoreNextClipboardImage: () => ipcRenderer.send('clipboard:ignore-next'),
 
   loadBoard: () => ipcRenderer.invoke('board:load'),
   saveBoard: (data) => ipcRenderer.invoke('board:save', data),

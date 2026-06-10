@@ -1,7 +1,20 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, protocol, net, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, protocol, net, shell, clipboard } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
+const { exec } = require('child_process');
+
+
+// Auto Updater config
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+
+// Add updater IPC handlers
+ipcMain.handle('updater:quit-and-install', () => {
+  autoUpdater.quitAndInstall();
+});
+
 const { pathToFileURL } = require('url');
 const crypto = require('crypto');
 const { isPremium, activateLicense } = require('./license.js');
@@ -178,6 +191,38 @@ function updateTrayMenu() {
   ]));
 }
 
+function createPinnedWindow(dataUrl) {
+  const win = new BrowserWindow({
+    width: 300,
+    height: 300,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  const html = `
+    <html>
+    <head>
+      <style>
+        body { margin: 0; overflow: hidden; background: transparent; -webkit-app-region: drag; }
+        img { width: 100%; height: 100%; object-fit: contain; }
+        .close { position: absolute; top: 4px; right: 4px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; -webkit-app-region: no-drag; display: none; }
+        body:hover .close { display: block; }
+      </style>
+    </head>
+    <body>
+      <button class="close" onclick="window.close()">X</button>
+      <img src="${dataUrl}">
+    </body>
+    </html>
+  `;
+  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+}
+
 function createWindow() {
   const state = loadWindowState();
 
@@ -245,7 +290,12 @@ function createWindow() {
         { role: 'selectAll' }
       );
     } else if (params.hasImageContents) {
-      template.push({ role: 'copyImage' });
+      template.push({
+        label: 'Copy as Screenshot',
+        click: () => {
+          mainWindow.webContents.send('context-menu:copy-screenshot', { x: params.x, y: params.y });
+        }
+      });
     } else if (params.selectionText) {
       template.push(
         { role: 'copy' },
@@ -409,6 +459,12 @@ function minimizeMainWindow() {
     updateTrayMenu();
   }, process.platform === 'linux' ? 80 : 0);
 }
+
+ipcMain.on('window:focus', () => {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isFocused()) {
+    mainWindow.focus();
+  }
+});
 
 ipcMain.on('window:minimize', () => {
   minimizeMainWindow();
@@ -593,9 +649,38 @@ ipcMain.handle('media:import-url', async (_event, payload) => {
   };
 });
 
+ipcMain.handle('media:save-blob', async (event, arrayBuffer) => {
+  try {
+    const ext = '.png';
+    const id = crypto.randomUUID();
+    const fileName = `${Date.now()}-${id}${ext}`;
+    const destination = path.join(getMediaDir(), fileName);
+    
+    // We receive an ArrayBuffer from the renderer, convert to Buffer
+    const buffer = Buffer.from(arrayBuffer);
+    await fsp.mkdir(getMediaDir(), { recursive: true });
+    await fsp.writeFile(destination, buffer);
+    return `app-media://media/${fileName}`;
+  } catch (err) {
+    console.error('Failed to save blob:', err);
+    return null;
+  }
+});
+
 app.whenReady().then(() => {
   // Set the App User Model ID so the taskbar icon shows correctly on Windows and Linux
   app.setAppUserModelId('com.nazih.floatboard');
+
+  // Check for updates
+  autoUpdater.checkForUpdatesAndNotify().catch(err => {
+    console.error('Failed to check for updates:', err);
+  });
+  
+  autoUpdater.on('update-downloaded', (info) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:update-downloaded', info);
+    }
+  });
 
   // Register custom app-media protocol to load local files safely without webSecurity blocks
   protocol.handle('app-media', async (request) => {
@@ -637,6 +722,71 @@ app.whenReady().then(() => {
   createTray();
 
   globalShortcut.register('CommandOrControl+Shift+Space', toggleWindowVisibility);
+  
+  // Clipboard History Polling
+  const clipHistory = [];
+  let lastText = '';
+  let lastImageHash = '';
+  let ignoreNextClipboardImage = false;
+  
+  ipcMain.on('clipboard:ignore-next', () => {
+    ignoreNextClipboardImage = true;
+  });
+
+  setInterval(() => {
+    const text = clipboard.readText();
+    if (text && text !== lastText) {
+      lastText = text;
+      // Push new text to history, remove duplicates, keep top 10
+      const existingIdx = clipHistory.findIndex(item => item.type === 'text' && item.content === text);
+      if (existingIdx !== -1) clipHistory.splice(existingIdx, 1);
+      clipHistory.unshift({ type: 'text', content: text, timestamp: Date.now() });
+      if (clipHistory.length > 10) clipHistory.pop();
+    }
+
+    // Auto-import clipboard images as screenshots
+    const img = clipboard.readImage();
+    if (img && !img.isEmpty()) {
+      const imgBuffer = img.toPNG();
+      const imgHash = crypto.createHash('md5').update(imgBuffer).digest('hex');
+      if (imgHash !== lastImageHash) {
+        lastImageHash = imgHash;
+        
+        if (ignoreNextClipboardImage) {
+          ignoreNextClipboardImage = false;
+          return;
+        }
+        
+        const fileName = `${Date.now()}-${crypto.randomUUID()}.png`;
+        const dest = path.join(getMediaDir(), fileName);
+        fsp.mkdir(getMediaDir(), { recursive: true }).then(() => {
+          return fsp.writeFile(dest, imgBuffer);
+        }).then(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+             mainWindow.webContents.send('media:auto-added', {
+               id: crypto.randomUUID(),
+               kind: 'image',
+               name: 'screenshot.png',
+               mime: 'image/png',
+               size: imgBuffer.length,
+               storage: 'file',
+               fileName,
+               src: `app-media://media/${fileName}`,
+               createdAt: new Date().toISOString()
+             });
+          }
+        }).catch(err => console.error('Failed to auto-save clipboard image:', err));
+      }
+    }
+  }, 1000);
+
+  globalShortcut.register('CommandOrControl+Shift+V', () => {
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) showWindow();
+      mainWindow.webContents.send('history:show', clipHistory);
+    }
+  });
+
 
   app.on('activate', showWindow);
 });

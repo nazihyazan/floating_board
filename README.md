@@ -21,8 +21,9 @@ FloatBoard is a cross-platform desktop application that lives above your other w
 ## ✨ Features
 - **Always On Top:** Never lose track of your clipboard. FloatBoard floats gracefully above your active applications.
 - **Glassmorphism UI:** A sleek, semi-transparent interface that adapts to your desktop background.
+- **Hover to Focus:** Work faster without extra clicks. The board automatically focuses when you hover over it.
 - **Cross-Platform:** Available for Windows, macOS, and Linux.
-- **Smart History:** Automatically saves your copied text, links, and code snippets.
+- **Smart History:** Automatically saves your copied text and allows instant one-click copying back to your OS clipboard.
 - **Light & Dark Mode:** Adapts to your environment dynamically.
 
 ### 💎 Premium Features
@@ -54,3 +55,6 @@ Download the `.AppImage` or `.rpm` file from the [Releases page](https://github.
 
 ## 🤝 Support
 If you encounter any issues or have feature requests, please open an issue or contact us via [floatboard.xyz](https://floatboard.xyz).
+
+## ⚠️ Disclaimer
+FloatBoard is a neutral productivity tool. It does not host, distribute, or modify any content. Users are solely responsible for ensuring they have the necessary rights and licenses for any content they copy, paste, or drag using this application. The developer assumes no liability for any misuse or copyright infringement.

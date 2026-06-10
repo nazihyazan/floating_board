@@ -21,6 +21,9 @@
   "homepage": "https://github.com/nazih/floating-board",
   "license": "MIT",
   "type": "commonjs",
+  "dependencies": {
+    "electron-updater": "^6.1.8"
+  },
   "devDependencies": {
     "electron": "^29.4.6",
     "electron-builder": "^24.13.3"
