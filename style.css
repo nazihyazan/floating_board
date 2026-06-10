@@ -1524,3 +1524,21 @@ input:checked + .slider:before {
   outline: none;
   white-space: pre;
 }
+
+/* Windows Native Frame Overrides */
+body.platform-win32 .chrome-bar {
+  display: none !important;
+}
+
+body.platform-win32 .window-shell {
+  border: none !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.platform-win32[data-theme="dark"] .window-shell {
+  background: #1e1e1e !important;
+}

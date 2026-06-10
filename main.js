@@ -236,10 +236,10 @@ function createWindow() {
     minHeight: MIN_BOUNDS.height,
     title: APP_NAME,
     icon: getIconPath(),
-    frame: process.platform === 'darwin',
+    frame: process.platform === 'darwin' || process.platform === 'win32',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    transparent: true,
-    backgroundColor: '#00000000',
+    transparent: process.platform !== 'win32',
+    backgroundColor: process.platform === 'win32' ? '#ffffff' : '#00000000',
     hasShadow: true,
     resizable: true,
     minimizable: true,
@@ -258,7 +258,7 @@ function createWindow() {
       visualEffectState: 'active'
     } : {}),
     ...(process.platform === 'win32' ? {
-      backgroundMaterial: 'acrylic'
+      // backgroundMaterial removed to keep it solid white
     } : {})
   });
 
@@ -332,15 +332,9 @@ function createWindow() {
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
-      if (process.platform === 'darwin') {
-        event.preventDefault();
-        mainWindow.hide();
-        updateTrayMenu();
-      } else {
-        // On Windows/Linux, if a native close event occurs (e.g. Alt+F4, or NSIS installer killing the app)
-        // we let it close the app. The custom 'X' button still hides to tray via ipcMain.on('window:close')
-        isQuitting = true;
-      }
+      event.preventDefault();
+      mainWindow.hide();
+      updateTrayMenu();
     }
   });
 
@@ -565,6 +559,33 @@ ipcMain.handle('license:is-premium', () => {
 
 ipcMain.handle('license:activate', (_event, key) => {
   return activateLicense(key);
+});
+
+ipcMain.handle('license:check-daily-limit', async (_event, kind) => {
+  if (isPremium()) return true;
+  const limitKind = kind === 'video' ? 'image' : kind;
+  if (limitKind !== 'text' && limitKind !== 'image') return true;
+
+  const usagePath = getUserPath('daily-usage.json');
+  const usage = readJsonSync(usagePath, {});
+  const now = Date.now();
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+
+  if (!usage.timestamp || (now - usage.timestamp) > ONE_DAY) {
+    usage.timestamp = now;
+    usage.text = 0;
+    usage.image = 0;
+  }
+
+  const totalUsage = (usage.text || 0) + (usage.image || 0);
+
+  if (totalUsage >= 10) {
+    return false;
+  }
+
+  usage[limitKind] = (usage[limitKind] || 0) + 1;
+  await writeJsonAtomic(usagePath, usage);
+  return true;
 });
 
 ipcMain.on('open-external', (_event, url) => {

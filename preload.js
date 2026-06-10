@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('floatingBoard', {
   importMediaUrl: (payload) => ipcRenderer.invoke('media:import-url', payload),
   isPremium: () => ipcRenderer.invoke('license:is-premium'),
   activateLicense: (key) => ipcRenderer.invoke('license:activate', key),
+  checkDailyLimit: (kind) => ipcRenderer.invoke('license:check-daily-limit', kind),
   openExternal: (url) => ipcRenderer.send('open-external', url),
 
   getFilePath: (file) => {

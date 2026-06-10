@@ -55,29 +55,10 @@ let upgradeModal = null;
 
 let hasShownUpgradeModal = false;
 
-function checkDailyLimit(kind) {
+async function checkDailyLimit(kind) {
   if (isPremium) return true;
-  // We'll map video to image for the limit.
-  const limitKind = kind === 'video' ? 'image' : kind;
-  if (limitKind !== 'text' && limitKind !== 'image') return true;
-
-  const now = Date.now();
-  const ONE_DAY = 24 * 60 * 60 * 1000;
-  
-  let usage = {};
-  try {
-    usage = JSON.parse(localStorage.getItem('daily_usage')) || {};
-  } catch (e) {
-    usage = {};
-  }
-
-  if (!usage.timestamp || (now - usage.timestamp) > ONE_DAY) {
-    usage = { timestamp: now, text: 0, image: 0 };
-  }
-
-  const totalUsage = (usage.text || 0) + (usage.image || 0);
-
-  if (totalUsage >= 10) {
+  const isAllowed = await api.checkDailyLimit(kind);
+  if (!isAllowed) {
     if (!hasShownUpgradeModal) {
       hasShownUpgradeModal = true;
       showToast(`Daily limit reached (10/10). Upgrade to Premium for unlimited access.`);
@@ -87,9 +68,6 @@ function checkDailyLimit(kind) {
     }
     return false;
   }
-
-  usage[limitKind]++;
-  localStorage.setItem('daily_usage', JSON.stringify(usage));
   return true;
 }
 
@@ -647,7 +625,6 @@ function renderTextCard(item, section) {
   card.querySelector('.copy-btn').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(item.text);
-      showToast('Copied to clipboard');
     } catch (err) {
       showToast('Copy failed');
     }
@@ -768,12 +745,11 @@ function renderMediaGrid(section) {
   return grid;
 }
 
-function addText(text) {
+async function addText(text) {
   if (!text) return;
   
-  if (!checkDailyLimit('text')) {
-    return;
-  }
+  const allowed = await checkDailyLimit('text');
+  if (!allowed) return;
 
   const section = ensureSection('text');
   if (!section.items) {
@@ -875,7 +851,8 @@ async function addFile(file) {
   const kind = getKind(file);
   if (!kind) return false;
 
-  if (!checkDailyLimit(kind)) {
+  const allowed = await checkDailyLimit(kind);
+  if (!allowed) {
     return false;
   }
 
@@ -913,7 +890,8 @@ async function addFiles(files) {
 }
 
 async function addMediaFromUrl(url, kind) {
-  if (!checkDailyLimit(kind)) {
+  const allowed = await checkDailyLimit(kind);
+  if (!allowed) {
     return false;
   }
   try {
@@ -1869,9 +1847,10 @@ document.addEventListener('click', (event) => {
   }
 });
 
-api.onMediaAutoAdded((item) => {
+api.onMediaAutoAdded(async (item) => {
   if (isLicenseModalOpen) return;
-  if (!checkDailyLimit('image')) return;
+  const allowed = await checkDailyLimit('image');
+  if (!allowed) return;
   
   const section = ensureSection('image');
   section.items.push(item);
@@ -1879,7 +1858,50 @@ api.onMediaAutoAdded((item) => {
   activeType = 'image';
   render();
   queueSave();
-  showToast('Screenshot auto-added from clipboard');
+});
+
+api.onHistoryShow((clipHistory) => {
+  const historyOverlay = document.getElementById('history-overlay');
+  const listEl = document.getElementById('history-list');
+  if (!historyOverlay || !listEl) return;
+
+  historyOverlay.classList.add('active');
+  
+  if (!clipHistory || clipHistory.length === 0) {
+    listEl.innerHTML = `
+      <div class="history-empty-state">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>No clipboard history</span>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = '';
+  for (const item of clipHistory) {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'history-item';
+    const bodyContent = escapeHtml(item.content);
+    itemEl.innerHTML = `
+      <div class="history-item-icon">📝</div>
+      <div class="history-item-text">${bodyContent}</div>
+      <div class="history-item-actions">
+        <button class="history-action-btn restore" type="button" title="Paste to board">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    itemEl.querySelector('.restore').addEventListener('click', () => {
+      addText(item.content);
+      historyOverlay.classList.remove('active');
+    });
+    listEl.appendChild(itemEl);
+  }
 });
 
 document.addEventListener('mouseup', () => {
