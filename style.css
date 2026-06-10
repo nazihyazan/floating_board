@@ -1248,16 +1248,60 @@ input:checked + .slider:before {
   padding-left: 80px;
 }
 
-/* Windows and Linux use HTML traffic lights */
+/* Windows and Linux use HTML traffic lights but styled as Windows controls */
 .platform-win32 .chrome-bar,
 .platform-linux .chrome-bar {
-  grid-template-columns: auto minmax(0, 1fr) 86px;
+  grid-template-columns: auto minmax(0, 1fr) 138px;
+  padding-right: 0;
 }
 .platform-win32 .traffic-lights,
 .platform-linux .traffic-lights {
   order: 3;
   justify-content: flex-end;
+  gap: 0;
+  height: 100%;
 }
+.platform-win32 .traffic-button,
+.platform-linux .traffic-button {
+  width: 46px;
+  height: 42px; /* Full height of titlebar */
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  opacity: 0.8;
+}
+.platform-win32 .traffic-button.minimize,
+.platform-linux .traffic-button.minimize,
+.platform-win32 .traffic-button.maximize,
+.platform-linux .traffic-button.maximize {
+  background: transparent;
+}
+.platform-win32 .traffic-button.close,
+.platform-linux .traffic-button.close {
+  background: transparent;
+}
+.platform-win32 .traffic-button:hover,
+.platform-linux .traffic-button:hover {
+  background: var(--btn-secondary-hover);
+  opacity: 1;
+  filter: none;
+}
+.platform-win32 .traffic-button.close:hover,
+.platform-linux .traffic-button.close:hover {
+  background: #e81123;
+  color: white;
+}
+.platform-win32 .win-icon,
+.platform-linux .win-icon {
+  display: block;
+  width: 10px;
+  height: 10px;
+}
+
 .platform-win32 .window-actions,
 .platform-linux .window-actions {
   order: 1;
