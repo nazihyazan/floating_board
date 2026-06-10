@@ -240,7 +240,7 @@ function createWindow() {
     ...(process.platform === 'win32' ? {
       titleBarOverlay: {
         color: '#00000000',
-        symbolColor: '#ffffff',
+        symbolColor: '#000000',
         height: 42
       }
     } : {}),
@@ -718,6 +718,18 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error('Failed to handle app-media protocol request:', error);
       return new Response('Not Found', { status: 404 });
+    }
+  });
+  ipcMain.on('theme:change', (event, theme) => {
+    if (process.platform === 'win32' && mainWindow && !mainWindow.isDestroyed()) {
+      try {
+        mainWindow.setTitleBarOverlay({
+          color: '#00000000',
+          symbolColor: theme === 'dark' ? '#ffffff' : '#000000'
+        });
+      } catch (e) {
+        // Ignored
+      }
     }
   });
 

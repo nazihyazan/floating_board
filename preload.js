@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('floatingBoard', {
   
   onUpdateDownloaded: (callback) => subscribe('updater:update-downloaded', callback),
   quitAndInstallUpdate: () => ipcRenderer.invoke('updater:quit-and-install'),
+  changeTheme: (theme) => ipcRenderer.send('theme:change', theme),
 
   saveBlob: (buffer) => ipcRenderer.invoke('media:save-blob', buffer),
   ignoreNextClipboardImage: () => ipcRenderer.send('clipboard:ignore-next'),

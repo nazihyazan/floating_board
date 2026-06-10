@@ -1490,6 +1490,10 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('theme', theme);
   
+  if (api.changeTheme) {
+    api.changeTheme(theme);
+  }
+  
   const sunIcon = document.querySelector('.theme-icon-sun');
   const moonIcon = document.querySelector('.theme-icon-moon');
   if (sunIcon && moonIcon) {

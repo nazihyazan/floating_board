@@ -1255,16 +1255,19 @@ input:checked + .slider:before {
 }
 /* Shift layout so window actions don't overlap with native right WCO */
 .platform-win32 .chrome-bar {
-  grid-template-columns: 48px minmax(0, 1fr) 140px;
-  padding-right: 140px;
+  grid-template-columns: 140px minmax(0, 1fr) 140px;
+  padding: 0;
 }
 /* Move window actions to the left since right is occupied by native controls */
 .platform-win32 .window-actions {
   order: 1;
   justify-content: flex-start;
+  padding-left: 12px;
 }
 .platform-win32 .window-title {
   order: 2;
+  text-align: center;
+  justify-content: center;
 }
 
 /* Linux */
