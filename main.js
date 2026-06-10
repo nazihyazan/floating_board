@@ -800,23 +800,23 @@ app.whenReady().then(() => {
     }
   });
 
-  globalShortcut.register('CommandOrControl+Shift+S', () => {
-    let cmd = '';
-    if (process.platform === 'linux') {
-      cmd = 'gnome-screenshot -a';
-    } else if (process.platform === 'win32') {
-      cmd = 'powershell.exe -Command "Start-Process ms-screenclip:"';
-    } else if (process.platform === 'darwin') {
-      cmd = 'screencapture -i -c';
-    }
-    if (cmd) {
-      exec(cmd, (error) => {
-        if (error) {
-          console.error('Failed to trigger native screenshot tool:', error);
-        }
-      });
-    }
-  });
+  if (process.platform === 'win32' || process.platform === 'darwin') {
+    globalShortcut.register('CommandOrControl+Shift+S', () => {
+      let cmd = '';
+      if (process.platform === 'win32') {
+        cmd = 'powershell.exe -Command "Start-Process ms-screenclip:"';
+      } else if (process.platform === 'darwin') {
+        cmd = 'screencapture -i -c';
+      }
+      if (cmd) {
+        exec(cmd, (error) => {
+          if (error) {
+            console.error('Failed to trigger native screenshot tool:', error);
+          }
+        });
+      }
+    });
+  }
   app.on('activate', showWindow);
 });
 
