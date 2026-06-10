@@ -670,6 +670,9 @@ ipcMain.handle('media:save-blob', async (event, arrayBuffer) => {
 app.whenReady().then(() => {
   // Set the App User Model ID so the taskbar icon shows correctly on Windows and Linux
   app.setAppUserModelId('com.nazih.floatboard');
+  if (process.platform === 'linux') {
+    app.setDesktopName('floatboard.desktop');
+  }
 
   // Check for updates
   autoUpdater.checkForUpdatesAndNotify().catch(err => {

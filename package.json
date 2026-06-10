@@ -57,7 +57,6 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.png",
       "artifactName": "FloatBoard.Setup.${version}.${ext}"
     },
     "linux": {
@@ -67,7 +66,6 @@
         "AppImage",
         "snap"
       ],
-      "icon": "assets/icon.png",
       "category": "Utility",
       "maintainer": "Nazih <nazih@example.com>"
     },
