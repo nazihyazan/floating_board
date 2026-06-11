@@ -55,9 +55,28 @@ let upgradeModal = null;
 
 let hasShownUpgradeModal = false;
 
+async function updateUsageBadge() {
+  const badge = document.getElementById('usage-badge');
+  if (isPremium) {
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  const usage = await api.getDailyUsage();
+  if (badge) {
+    const remaining = Math.max(0, 10 - usage);
+    badge.textContent = remaining;
+    badge.style.background = remaining <= 3 ? '#ff4757' : '#2ed573';
+    badge.style.display = 'inline-block';
+  }
+}
+
 async function checkDailyLimit(kind) {
-  if (isPremium) return true;
+  if (isPremium) {
+    updateUsageBadge();
+    return true;
+  }
   const isAllowed = await api.checkDailyLimit(kind);
+  updateUsageBadge();
   if (!isAllowed) {
     if (!hasShownUpgradeModal) {
       hasShownUpgradeModal = true;
@@ -1429,6 +1448,8 @@ async function init() {
 
   render();
   boardEl.focus();
+  
+  updateUsageBadge();
 }
 
 async function createCheckout(email) {

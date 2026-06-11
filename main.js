@@ -588,6 +588,19 @@ ipcMain.handle('license:check-daily-limit', async (_event, kind) => {
   return true;
 });
 
+ipcMain.handle('license:get-daily-usage', () => {
+  if (isPremium()) return 0;
+  const usagePath = getUserPath('daily-usage.json');
+  const usage = readJsonSync(usagePath, {});
+  const now = Date.now();
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+
+  if (!usage.timestamp || (now - usage.timestamp) > ONE_DAY) {
+    return 0;
+  }
+  return (usage.text || 0) + (usage.image || 0);
+});
+
 ipcMain.on('open-external', (_event, url) => {
   shell.openExternal(url);
 });
