@@ -56,7 +56,7 @@ let upgradeModal = null;
 let hasShownUpgradeModal = false;
 
 async function updateUsageBadge() {
-  const badge = document.getElementById('usage-badge');
+  const badge = document.getElementById('limit-badge');
   if (isPremium) {
     if (badge) badge.style.display = 'none';
     return;
@@ -528,6 +528,7 @@ function renderSection(section) {
           name: item.name,
           storage: item.storage,
           fileName: item.fileName,
+          mime: item.mime,
           createdAt: item.createdAt || now()
         });
       }
@@ -826,7 +827,10 @@ async function createMediaItem(file, kind) {
   };
 }
 
-async function flattenImageToItem(src, originalName = 'screenshot.png') {
+async function flattenImageToItem(src, originalName) {
+  if (!originalName || originalName.toLowerCase() === 'screenshot.png' || originalName.toLowerCase() === 'image.png') {
+    originalName = `Screenshot ${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '').replace(/:/g, '-')}.png`;
+  }
   return new Promise((resolve, reject) => {
     const img = new Image();
     // Allow cross-origin to avoid tainted canvas if loading from remote URL
@@ -880,7 +884,11 @@ async function addFile(file) {
     let item;
     if (kind === 'image') {
       const tempSrc = URL.createObjectURL(file);
-      item = await flattenImageToItem(tempSrc, file.name);
+      let fileName = file.name;
+      if (!fileName || fileName.toLowerCase() === 'image.png' || fileName.toLowerCase() === 'screenshot.png') {
+        fileName = `Screenshot ${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '').replace(/:/g, '-')}.png`;
+      }
+      item = await flattenImageToItem(tempSrc, fileName);
       URL.revokeObjectURL(tempSrc);
     } else {
       item = await createMediaItem(file, kind);
@@ -1116,6 +1124,7 @@ function restoreHistoryItem(id) {
     newItem.name = histItem.name;
     newItem.storage = histItem.storage;
     newItem.fileName = histItem.fileName;
+    newItem.mime = histItem.mime;
   }
 
   section.items.push(newItem);
@@ -1145,6 +1154,11 @@ function clearAllHistory() {
 function renderHistoryList() {
   const listEl = document.getElementById('history-list');
   if (!listEl) return;
+
+  const headerEl = document.querySelector('.history-header h3');
+  if (headerEl) {
+    headerEl.textContent = `History (${historyItems.length})`;
+  }
 
   if (historyItems.length === 0) {
     listEl.innerHTML = `
@@ -1361,27 +1375,19 @@ async function init() {
       licenseSubmitBtn.textContent = 'Verifying...';
       
       try {
-        const isValid = await verifyLicenseKey(email, key);
+        const success = await api.activateLicense(email, key);
         
-        if (isValid) {
-          const success = await api.activateLicense(key);
-          if (success) {
-            isPremium = true;
-            localStorage.setItem('floatboard-email', email);
-            if (activateBtn) activateBtn.style.display = 'none';
-            if (premiumBadge) premiumBadge.style.display = 'inline-block';
-            licenseOverlay.classList.remove('active');
-            isLicenseModalOpen = false;
-            showToast('Activation Successful ✓');
-          } else {
-            if (licenseError) {
-              licenseError.textContent = 'Failed to save license locally';
-              licenseError.style.display = 'block';
-            }
-          }
+        if (success) {
+          isPremium = true;
+          localStorage.setItem('floatboard-email', email);
+          if (activateBtn) activateBtn.style.display = 'none';
+          if (premiumBadge) premiumBadge.style.display = 'inline-block';
+          licenseOverlay.classList.remove('active');
+          isLicenseModalOpen = false;
+          showToast('Activation Successful ✓');
         } else {
           if (licenseError) {
-            licenseError.textContent = 'Invalid License Key. Please make sure you are using the exact email address you used during purchase.';
+            licenseError.textContent = 'Invalid License Key or Fingerprint mismatch.';
             licenseError.style.display = 'block';
           }
         }
@@ -1458,32 +1464,6 @@ async function createCheckout(email) {
   return `https://floatboard.xyz/pricing.html?email=${encodeURIComponent(email.trim())}`;
 }
 
-async function verifyLicenseKey(email, key) {
-  try {
-    const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        license_key: key.trim()
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (data.valid && data.meta && data.meta.customer_email) {
-      // Strictly enforce that the email matches the one from LemonSqueezy
-      return data.meta.customer_email.toLowerCase() === email.trim().toLowerCase();
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Verification error:', error);
-    return false;
-  }
-}
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -1796,6 +1776,10 @@ previewImg.addEventListener('mousedown', (e) => {
   }
 });
 
+previewImg.addEventListener('dragstart', (e) => {
+  e.preventDefault();
+});
+
 document.addEventListener('mousemove', (e) => {
   if (previewDragging) {
     previewPanX = e.clientX - previewStartX;
@@ -1870,13 +1854,14 @@ document.addEventListener('click', (event) => {
 
 api.onMediaAutoAdded(async (item) => {
   if (isLicenseModalOpen) return;
-  const allowed = await checkDailyLimit('image');
+  const kind = item.kind || 'image';
+  const allowed = await checkDailyLimit(kind);
   if (!allowed) return;
   
-  const section = ensureSection('image');
+  const section = ensureSection(kind);
   section.items.push(item);
   section.updatedAt = now();
-  activeType = 'image';
+  activeType = kind;
   render();
   queueSave();
 });
@@ -1932,5 +1917,88 @@ document.addEventListener('mouseup', () => {
 // Auto-focus window when mouse enters so shortcuts work instantly
 document.body.addEventListener('mouseenter', () => {
   if (api.focus) api.focus();
+});
+
+// --- Drag and Drop Reordering ---
+let dragItemId = null;
+let dragTargetType = null;
+
+sectionsEl.addEventListener('dragstart', (e) => {
+  const card = e.target.closest('.text-card, .media-item');
+  if (!card) return;
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+    e.preventDefault();
+    return;
+  }
+  dragItemId = card.dataset.id;
+  dragTargetType = card.closest('.content-section').dataset.type;
+  card.classList.add('dragging');
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragItemId);
+  }
+});
+
+sectionsEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const card = e.target.closest('.text-card, .media-item');
+  if (!card || !dragItemId || card.dataset.id === dragItemId) return;
+  const sectionEl = card.closest('.content-section');
+  if (!sectionEl || sectionEl.dataset.type !== dragTargetType) return;
+
+  const bounding = card.getBoundingClientRect();
+  const offset = e.clientY - bounding.top;
+  if (offset > bounding.height / 2) {
+    card.classList.add('drag-over-bottom');
+    card.classList.remove('drag-over-top');
+  } else {
+    card.classList.add('drag-over-top');
+    card.classList.remove('drag-over-bottom');
+  }
+});
+
+sectionsEl.addEventListener('dragleave', (e) => {
+  const card = e.target.closest('.text-card, .media-item');
+  if (card) {
+    card.classList.remove('drag-over-top', 'drag-over-bottom');
+  }
+});
+
+sectionsEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  if (!dragItemId) return;
+  const card = e.target.closest('.text-card, .media-item');
+  if (!card || card.dataset.id === dragItemId) return;
+  const sectionEl = card.closest('.content-section');
+  if (!sectionEl || sectionEl.dataset.type !== dragTargetType) return;
+
+  const section = ensureSection(dragTargetType);
+  const dragIndex = section.items.findIndex(i => i.id === dragItemId);
+  let targetIndex = section.items.findIndex(i => i.id === card.dataset.id);
+
+  if (dragIndex === -1 || targetIndex === -1) return;
+
+  const bounding = card.getBoundingClientRect();
+  const offset = e.clientY - bounding.top;
+  if (offset > bounding.height / 2) {
+    targetIndex++;
+  }
+
+  if (dragIndex < targetIndex) targetIndex--;
+
+  const [removed] = section.items.splice(dragIndex, 1);
+  section.items.splice(targetIndex, 0, removed);
+
+  section.updatedAt = now();
+  queueSave();
+  render();
+});
+
+sectionsEl.addEventListener('dragend', (e) => {
+  dragItemId = null;
+  dragTargetType = null;
+  document.querySelectorAll('.text-card, .media-item').forEach(el => {
+    el.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+  });
 });
 

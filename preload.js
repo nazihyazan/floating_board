@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('floatingBoard', {
   importMedia: (payload) => ipcRenderer.invoke('media:import', payload),
   importMediaUrl: (payload) => ipcRenderer.invoke('media:import-url', payload),
   isPremium: () => ipcRenderer.invoke('license:is-premium'),
-  activateLicense: (key) => ipcRenderer.invoke('license:activate', key),
+  activateLicense: (email, key) => ipcRenderer.invoke('license:activate', email, key),
   checkDailyLimit: (kind) => ipcRenderer.invoke('license:check-daily-limit', kind),
   getDailyUsage: () => ipcRenderer.invoke('license:get-daily-usage'),
   openExternal: (url) => ipcRenderer.send('open-external', url),

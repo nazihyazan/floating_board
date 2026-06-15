@@ -4,6 +4,7 @@
   --border-color: rgba(255, 255, 255, 0.64);
   --chrome-bg: rgba(255, 255, 255, 0.28);
   --chrome-border-color: rgba(37, 45, 60, 0.08);
+  --chrome-title-color: #16181d;
   
   --text-card-bg: rgba(255, 255, 255, 0.28);
   --text-card-bg-hover: rgba(255, 255, 255, 0.42);
@@ -34,6 +35,8 @@
   --minimize-btn-bg: #ffbd2e;
   --maximize-btn-bg: #28c840;
   
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  
   --placeholder-color: #999;
 }
 
@@ -43,6 +46,7 @@
   --border-color: rgba(255, 255, 255, 0.15);
   --chrome-bg: rgba(0, 0, 0, 0.15);
   --chrome-border-color: rgba(255, 255, 255, 0.08);
+  --chrome-title-color: #e0e0e0;
   
   --text-card-bg: rgba(255, 255, 255, 0.05);
   --text-card-bg-hover: rgba(255, 255, 255, 0.09);
@@ -72,6 +76,8 @@
   --close-btn-bg: #ff605c;
   --minimize-btn-bg: #ffbd2e;
   --maximize-btn-bg: #00ca4e;
+  
+  --hover-bg: rgba(255, 255, 255, 0.1);
   
   --placeholder-color: #666;
 }
@@ -161,11 +167,10 @@ button {
 .chrome-bar {
   position: relative;
   z-index: 10;
-  display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) 48px;
+  display: flex;
   align-items: center;
   min-height: 42px;
-  padding: 0 12px;
+  padding: 0 0 0 12px;
   border-bottom: 1px solid var(--chrome-border-color);
   background: var(--chrome-bg);
   -webkit-app-region: drag;
@@ -205,7 +210,38 @@ button {
   filter: brightness(0.96) saturate(1.12);
 }
 
+.windows-traffic-lights {
+  display: flex;
+  align-self: stretch;
+  -webkit-app-region: no-drag;
+}
+.win-btn {
+  background: transparent;
+  border: none;
+  color: var(--chrome-title-color);
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, color 0.15s;
+  cursor: pointer;
+  border-radius: 0;
+  padding: 0;
+}
+.win-btn svg {
+  display: block;
+}
+.win-btn:hover {
+  background-color: var(--hover-bg);
+  opacity: 1;
+}
+.win-btn.close:hover {
+  background-color: #e81123;
+  color: white;
+}
 .window-title {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -250,6 +286,7 @@ button {
 }
 
 .icon-button {
+  position: relative;
   width: 26px;
   height: 26px;
   display: grid;
@@ -1220,9 +1257,12 @@ input:checked + .slider:before {
 #image-preview-img:active { cursor: grabbing; }
 
 .preview-controls {
-  position: absolute;
-  bottom: -40px;
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex; gap: 10px; justify-content: center;
+  z-index: 10000;
 }
 
 .preview-controls button {
@@ -1239,7 +1279,8 @@ input:checked + .slider:before {
 
 /* Mac (Darwin) */
 /* Hide HTML buttons since we use native titleBarStyle: 'hidden' traffic lights */
-.platform-darwin .traffic-lights {
+.platform-darwin .traffic-lights,
+.platform-darwin .windows-traffic-lights {
   display: none;
 }
 /* Shift the layout so title doesn't overlap with native left traffic lights */
@@ -1311,26 +1352,12 @@ input:checked + .slider:before {
 .platform-linux .window-title {
   order: 2;
 }
-
-/* Linux */
-/* Linux keeps the HTML buttons because titleBarStyle 'hidden' is not supported */
-.platform-linux .chrome-bar {
-  grid-template-columns: auto minmax(0, 1fr) 86px;
-}
-.platform-linux .traffic-lights {
+.platform-win32 .windows-traffic-lights,
+.platform-linux .windows-traffic-lights {
   order: 3;
-  justify-content: flex-end;
+  margin-right: 0;
 }
-.platform-linux .window-actions {
-  order: 1;
-  justify-content: flex-start;
-}
-.platform-linux .window-title {
-  order: 2;
-}
-.platform-linux .traffic-button.minimize { order: 1; }
-.platform-linux .traffic-button.maximize { order: 2; }
-.platform-linux .traffic-button.close { order: 3; }
+
 
 .update-toast {
   position: fixed;
@@ -1526,15 +1553,10 @@ input:checked + .slider:before {
 }
 
 /* Windows Native Frame Overrides */
-body.platform-win32 .traffic-lights {
-  display: none !important;
-}
 
-body.platform-win32 .window-title {
-  display: none !important;
-}
 
-body.platform-win32 .window-shell {
+body.platform-win32 .window-shell,
+body.platform-linux .window-shell {
   border: none !important;
   border-radius: 0 !important;
   background: #ffffff !important;
@@ -1543,6 +1565,44 @@ body.platform-win32 .window-shell {
   -webkit-backdrop-filter: none !important;
 }
 
-body.platform-win32[data-theme="dark"] .window-shell {
+body.platform-win32 .chrome-bar,
+body.platform-linux .chrome-bar {
+  background: #f3f3f3 !important;
+}
+
+[data-theme="dark"] body.platform-win32 .window-shell,
+[data-theme="dark"] body.platform-linux .window-shell {
   background: #1e1e1e !important;
+}
+
+[data-theme="dark"] body.platform-win32 .chrome-bar,
+[data-theme="dark"] body.platform-linux .chrome-bar {
+  background: #2d2d30 !important;
+}
+
+.limit-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #2ed573;
+  color: white;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 10px;
+  min-width: 14px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
+}
+
+/* Drag and Drop Helpers */
+.text-card.dragging, .media-item.dragging {
+  opacity: 0.5;
+}
+.text-card.drag-over-top, .media-item.drag-over-top {
+  box-shadow: 0 -4px 0 var(--chrome-border-color) !important;
+}
+.text-card.drag-over-bottom, .media-item.drag-over-bottom {
+  box-shadow: 0 4px 0 var(--chrome-border-color) !important;
 }

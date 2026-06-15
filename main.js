@@ -18,6 +18,82 @@ ipcMain.handle('updater:quit-and-install', () => {
 const { pathToFileURL } = require('url');
 const crypto = require('crypto');
 const { isPremium, activateLicense } = require('./license.js');
+const { machineIdSync } = require('node-machine-id');
+
+async function verifyWithKeygen(email, key) {
+  try {
+    const fingerprint = machineIdSync(true); // true to return original string
+
+    // Dynamic import to use node fetch
+    const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+    // Or simpler, in electron main process we can use net.fetch which is built-in since Electron 21
+    const { net } = require('electron');
+
+    const response = await net.fetch('https://api.keygen.sh/v1/accounts/dcc57dd7-bfd1-4469-a4f4-7c8545660f76/licenses/actions/validate-key', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/vnd.api+json',
+        'Accept': 'application/vnd.api+json'
+      },
+      body: JSON.stringify({
+        meta: {
+          key: key.trim(),
+          scope: {
+            fingerprint: fingerprint
+          }
+        }
+      })
+    });
+    
+    const data = await response.json();
+    console.log('Keygen Validate Response:', JSON.stringify(data, null, 2));
+    
+    if (data.meta && data.meta.valid) {
+      return true;
+    }
+    
+    // If the key is valid but this specific machine hasn't been registered yet
+    if (data.meta && (data.meta.code === 'NO_MACHINES' || data.meta.code === 'NO_MACHINE')) {
+      console.log('Machine not registered. Attempting to register machine...');
+      
+      const activateResponse = await net.fetch('https://api.keygen.sh/v1/accounts/dcc57dd7-bfd1-4469-a4f4-7c8545660f76/machines', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/vnd.api+json',
+          'Accept': 'application/vnd.api+json',
+          'Authorization': `License ${key.trim()}`
+        },
+        body: JSON.stringify({
+          data: {
+            type: 'machines',
+            attributes: {
+              fingerprint: fingerprint,
+              name: require('os').hostname() || 'FloatBoard User PC'
+            },
+            relationships: {
+              license: {
+                data: { type: 'licenses', id: data.data.id }
+              }
+            }
+          }
+        })
+      });
+      
+      const activateData = await activateResponse.json();
+      console.log('Keygen Machine Registration Response:', JSON.stringify(activateData, null, 2));
+      
+      if (activateData.data && activateData.data.id) {
+        // Machine registered successfully!
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Keygen validation error:', error);
+    return false;
+  }
+}
 
 const APP_NAME = 'FloatBoard';
 const DEFAULT_BOUNDS = { width: 460, height: 460 };
@@ -236,10 +312,10 @@ function createWindow() {
     minHeight: MIN_BOUNDS.height,
     title: APP_NAME,
     icon: getIconPath(),
-    frame: process.platform === 'darwin' || process.platform === 'win32',
+    frame: process.platform === 'darwin',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    transparent: process.platform !== 'win32',
-    backgroundColor: process.platform === 'win32' ? '#ffffff' : '#00000000',
+    transparent: false,
+    backgroundColor: '#ffffff',
     hasShadow: true,
     resizable: true,
     minimizable: true,
@@ -267,6 +343,26 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     showWindow();
+
+    if (process.env.TEST_STATE) {
+      setTimeout(() => {
+        const state = process.env.TEST_STATE;
+        mainWindow.webContents.executeJavaScript(`
+          if ('${state}' === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            if (window.api && window.api.changeTheme) window.api.changeTheme('dark');
+          } else if ('${state}' === 'history') {
+            document.getElementById('history-btn').click();
+          } else if ('${state}' === 'shortcuts') {
+            document.getElementById('shortcuts-btn').click();
+          } else if ('${state}' === 'settings') {
+            document.getElementById('settings-btn').click();
+          }
+        `);
+        if (state === 'dark') mainWindow.setBackgroundColor('#1a1a1e');
+      }, 500);
+    }
   });
 
   mainWindow.webContents.on('context-menu', (_event, params) => {
@@ -464,37 +560,24 @@ ipcMain.on('window:minimize', () => {
   minimizeMainWindow();
 });
 
-let normalBounds = null;
 ipcMain.on('window:toggle-maximize', () => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  
-  if (process.platform === 'win32') {
-    // Custom maximize for Windows transparent windows
-    if (normalBounds) {
-      // Restore
-      mainWindow.setBounds(normalBounds);
-      normalBounds = null;
-    } else {
-      // Maximize
-      normalBounds = mainWindow.getBounds();
-      const { screen } = require('electron');
-      const display = screen.getDisplayNearestPoint({ x: normalBounds.x, y: normalBounds.y });
-      mainWindow.setBounds(display.workArea);
-    }
-    // Fake the maximized status for renderer
-    sendWindowStatus();
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
   } else {
-    if (mainWindow.isMaximized()) {
-      mainWindow.unmaximize();
-    } else {
-      mainWindow.maximize();
-    }
-    sendWindowStatus();
+    mainWindow.maximize();
   }
+  sendWindowStatus();
 });
 
 ipcMain.on('window:close', () => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+});
+
+ipcMain.on('app:quit', () => {
+  isQuitting = true;
+  app.quit();
 });
 
 ipcMain.on('window:toggle-pin', () => {
@@ -557,8 +640,12 @@ ipcMain.handle('license:is-premium', () => {
   return isPremium();
 });
 
-ipcMain.handle('license:activate', (_event, key) => {
-  return activateLicense(key);
+ipcMain.handle('license:activate', async (_event, email, key) => {
+  const isValid = await verifyWithKeygen(email, key);
+  if (isValid) {
+    return activateLicense(email, key);
+  }
+  return false;
 });
 
 ipcMain.handle('license:check-daily-limit', async (_event, kind) => {
@@ -773,7 +860,12 @@ app.whenReady().then(() => {
       return new Response('Not Found', { status: 404 });
     }
   });
-// Removed theme:change since titleBarOverlay is no longer used
+  // Added theme:change for instant background color transition
+  ipcMain.on('theme:change', (_event, theme) => {
+    if (mainWindow && !mainWindow.isDestroyed() && process.platform !== 'win32') {
+      mainWindow.setBackgroundColor(theme === 'dark' ? '#1a1a1e' : '#ffffff');
+    }
+  });
 
   createWindow();
   createTray();
@@ -821,7 +913,7 @@ app.whenReady().then(() => {
              mainWindow.webContents.send('media:auto-added', {
                id: crypto.randomUUID(),
                kind: 'image',
-               name: 'screenshot.png',
+               name: `Screenshot_${Date.now()}.png`,
                mime: 'image/png',
                size: imgBuffer.length,
                storage: 'file',
