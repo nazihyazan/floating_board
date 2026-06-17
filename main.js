@@ -927,15 +927,21 @@ app.whenReady().then(() => {
     }
   }, 1000);
 
-  globalShortcut.register('CommandOrControl+Shift+V', () => {
+  const showHistory = () => {
     if (mainWindow) {
       if (!mainWindow.isVisible()) showWindow();
       mainWindow.webContents.send('history:show', clipHistory);
     }
-  });
+  };
+
+  globalShortcut.register('CommandOrControl+Shift+V', showHistory);
+
+  if (process.platform === 'darwin') {
+    globalShortcut.register('Control+Shift+V', showHistory);
+  }
 
   if (process.platform === 'win32' || process.platform === 'darwin') {
-    globalShortcut.register('CommandOrControl+Shift+S', () => {
+    const takeScreenshot = () => {
       let cmd = '';
       if (process.platform === 'win32') {
         cmd = 'powershell.exe -Command "Start-Process ms-screenclip:"';
@@ -949,7 +955,13 @@ app.whenReady().then(() => {
           }
         });
       }
-    });
+    };
+
+    globalShortcut.register('CommandOrControl+Shift+S', takeScreenshot);
+
+    if (process.platform === 'darwin') {
+      globalShortcut.register('Control+Shift+S', takeScreenshot);
+    }
   }
   app.on('activate', showWindow);
 });

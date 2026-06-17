@@ -118,10 +118,8 @@ if (closeBtn) {
 const minimizeBtn = document.getElementById('minimize-btn');
 if (minimizeBtn) minimizeBtn.addEventListener('click', () => api.minimize());
 
-const maximizeBtn = document.getElementById('maximize-btn');
 if (maximizeBtn) maximizeBtn.addEventListener('click', () => api.toggleMaximize());
 
-const pinBtn = document.getElementById('pin-btn');
 if (pinBtn) pinBtn.addEventListener('click', () => api.togglePin());
 
 api.onWindowStatus(updateWindowStatus);
@@ -2012,4 +2010,3 @@ sectionsEl.addEventListener('dragend', (e) => {
     el.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
   });
 });
-
