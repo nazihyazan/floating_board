@@ -67,7 +67,7 @@ jobs:
             dist/linux/*.AppImage
           retention-days: 7
 
-      - name: Upload to Release v1.0.13
+      - name: Upload to Release v1.0.14
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -82,6 +82,6 @@ jobs:
           
           if [ ${#files[@]} -gt 0 ]; then
             # Create release if it doesn't exist
-            gh release view v1.0.13 || gh release create v1.0.13 --title "FloatBoard v1.0.13" --notes "Windows Store Tile Icons Fix"
-            gh release upload v1.0.13 "${files[@]}" --clobber
+            gh release view v1.0.14 || gh release create v1.0.14 --title "FloatBoard v1.0.14" --notes "Mac UI Crash fix"
+            gh release upload v1.0.14 "${files[@]}" --clobber
           fi
