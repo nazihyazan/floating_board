@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, protocol, net, shell, clipboard } = require('electron');
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, protocol, net, shell, clipboard, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -323,6 +323,7 @@ function createWindow() {
     skipTaskbar: false,
     show: false,
     alwaysOnTop: state.alwaysOnTop,
+    acceptFirstMouse: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -880,6 +881,19 @@ app.whenReady().then(() => {
     ignoreNextClipboardImage = true;
   });
 
+  // Auto-focus window when hovered so user can control it without clicking
+  setInterval(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isFocused()) {
+      const point = screen.getCursorScreenPoint();
+      const bounds = mainWindow.getBounds();
+      // Check if cursor is within window bounds
+      if (point.x >= bounds.x && point.x <= bounds.x + bounds.width &&
+          point.y >= bounds.y && point.y <= bounds.y + bounds.height) {
+        mainWindow.focus();
+      }
+    }
+  }, 150);
+
   setInterval(() => {
     const text = clipboard.readText();
     if (text && text !== lastText) {
@@ -892,37 +906,48 @@ app.whenReady().then(() => {
     }
 
     // Auto-import clipboard images as screenshots
-    const img = clipboard.readImage();
-    if (img && !img.isEmpty()) {
-      const imgBuffer = img.toPNG();
-      const imgHash = crypto.createHash('md5').update(imgBuffer).digest('hex');
-      if (imgHash !== lastImageHash) {
-        lastImageHash = imgHash;
+    const formats = clipboard.availableFormats();
+    if (formats.some(f => f.startsWith('image/'))) {
+      const img = clipboard.readImage();
+      if (img && !img.isEmpty()) {
+        const size = img.getSize();
+        const bitmap = img.getBitmap();
         
-        if (ignoreNextClipboardImage) {
-          ignoreNextClipboardImage = false;
-          return;
-        }
+        // Fast hash to prevent running toPNG() every second:
+        // Use dimensions, bitmap length, and a small sample of pixels
+        const sampleSize = Math.min(1000, bitmap.length);
+        const sample = bitmap.subarray(0, sampleSize);
+        const fastHash = `${size.width}x${size.height}_${bitmap.length}_` + crypto.createHash('md5').update(sample).digest('hex');
         
-        const fileName = `${Date.now()}-${crypto.randomUUID()}.png`;
-        const dest = path.join(getMediaDir(), fileName);
-        fsp.mkdir(getMediaDir(), { recursive: true }).then(() => {
-          return fsp.writeFile(dest, imgBuffer);
-        }).then(() => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-             mainWindow.webContents.send('media:auto-added', {
-               id: crypto.randomUUID(),
-               kind: 'image',
-               name: `Screenshot_${Date.now()}.png`,
-               mime: 'image/png',
-               size: imgBuffer.length,
-               storage: 'file',
-               fileName,
-               src: `app-media://media/${fileName}`,
-               createdAt: new Date().toISOString()
-             });
+        if (fastHash !== lastImageHash) {
+          lastImageHash = fastHash;
+          
+          if (ignoreNextClipboardImage) {
+            ignoreNextClipboardImage = false;
+            return;
           }
-        }).catch(err => console.error('Failed to auto-save clipboard image:', err));
+          
+          const imgBuffer = img.toPNG();
+          const fileName = `${Date.now()}-${crypto.randomUUID()}.png`;
+          const dest = path.join(getMediaDir(), fileName);
+          fsp.mkdir(getMediaDir(), { recursive: true }).then(() => {
+            return fsp.writeFile(dest, imgBuffer);
+          }).then(() => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+               mainWindow.webContents.send('media:auto-added', {
+                 id: crypto.randomUUID(),
+                 kind: 'image',
+                 name: `Screenshot_${Date.now()}.png`,
+                 mime: 'image/png',
+                 size: imgBuffer.length,
+                 storage: 'file',
+                 fileName,
+                 src: `app-media://media/${fileName}`,
+                 createdAt: new Date().toISOString()
+               });
+            }
+          }).catch(err => console.error('Failed to auto-save clipboard image:', err));
+        }
       }
     }
   }, 1000);
