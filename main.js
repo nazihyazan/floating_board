@@ -882,17 +882,19 @@ app.whenReady().then(() => {
   });
 
   // Auto-focus window when hovered so user can control it without clicking
-  setInterval(() => {
-    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isFocused()) {
-      const point = screen.getCursorScreenPoint();
-      const bounds = mainWindow.getBounds();
-      // Check if cursor is within window bounds
-      if (point.x >= bounds.x && point.x <= bounds.x + bounds.width &&
-          point.y >= bounds.y && point.y <= bounds.y + bounds.height) {
-        mainWindow.focus();
+  if (process.platform !== 'linux') {
+    setInterval(() => {
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isFocused()) {
+        const point = screen.getCursorScreenPoint();
+        const bounds = mainWindow.getBounds();
+        // Check if cursor is within window bounds
+        if (point.x >= bounds.x && point.x <= bounds.x + bounds.width &&
+            point.y >= bounds.y && point.y <= bounds.y + bounds.height) {
+          mainWindow.focus();
+        }
       }
-    }
-  }, 150);
+    }, 150);
+  }
 
   setInterval(() => {
     const text = clipboard.readText();
