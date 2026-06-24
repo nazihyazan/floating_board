@@ -6,6 +6,27 @@ const path = require('path');
 const { exec } = require('child_process');
 
 
+// Single Instance Lock to prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, focus our window.
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) {
+        mainWindow.show();
+      }
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
+    }
+  });
+}
+
+
 // Auto Updater config
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
